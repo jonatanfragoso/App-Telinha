@@ -1,6 +1,6 @@
 {
   "name": "telinha",
-  "version": "0.2.7",
+  "version": "0.2.8",
   "description": "Stream de tela entre amigos, P2P via Tailscale",
   "main": "main.js",
   "scripts": {
