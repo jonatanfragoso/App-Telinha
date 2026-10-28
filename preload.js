@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('telinha', {
   sources: () => ipcRenderer.invoke('sources'),
 
   audioSessions: () => ipcRenderer.invoke('audio:sessions'),
+  voiceApps: () => ipcRenderer.invoke('audio:voiceApps'),
   pidForSource: (id) => ipcRenderer.invoke('audio:pidForSource', id),
   audioStart: (o) => ipcRenderer.invoke('audio:start', o),
   audioStop: () => ipcRenderer.invoke('audio:stop'),

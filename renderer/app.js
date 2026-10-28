@@ -515,7 +515,15 @@ async function buildAudioOptions() {
     winApp = await T.pidForSource(pickSel.id);
     if (winApp && winApp.pid) add('window', `Só o som desta janela (${winApp.name})`);
   }
-  add('nodiscord', 'Som do sistema, sem o Discord');
+  // som do sistema sem o app de voz aberto (o Windows só deixa tirar um)
+  voiceList = await T.voiceApps().catch(() => []);
+  const vs = $('#voiceApp'); vs.innerHTML = '';
+  let last = ''; try { last = localStorage.getItem('telinha.voiceExe') || ''; } catch {}
+  for (const v of voiceList) { const o = el('option', null, esc(`sem o ${v.name}`)); o.value = v.exe; vs.append(o); }
+  if (voiceList.some((v) => v.exe === last)) vs.value = last;
+  vs.onchange = () => { try { localStorage.setItem('telinha.voiceExe', vs.value); } catch {} renderSystemOption(); onAudioModeChange(); };
+  add('system', '');
+  renderSystemOption();
   add('pick', 'Escolher um app específico…');
   add('none', 'Sem áudio');
   sel.dataset.winPid = winApp && winApp.pid ? winApp.pid : '';
@@ -524,19 +532,38 @@ async function buildAudioOptions() {
   onAudioModeChange();
 }
 
+let voiceList = [];
+const chosenVoice = () => voiceList.find((v) => v.exe === $('#voiceApp').value) || voiceList[0] || null;
+function renderSystemOption() {
+  const o = $('#audioMode').querySelector('option[value=system]'); if (!o) return;
+  const v = chosenVoice();
+  o.textContent = v ? `Som do sistema, sem o ${v.name}` : 'Som do sistema (nenhum app de voz aberto)';
+}
+// aba do Discord aberta no navegador (só dá pra ver pelo título da janela, isto é, a aba ativa)
+const discordInBrowser = () => pickSources.some((x) => x.kind === 'window' && /discord/i.test(x.name) && /chrome|edge|firefox|opera|brave/i.test(x.name));
+
 async function onAudioModeChange() {
   const mode = $('#audioMode').value;
   const appSel = $('#audioApp');
   const hint = $('#audioHint');
   appSel.classList.toggle('hidden', mode !== 'pick');
+  $('#voiceApp').classList.toggle('hidden', mode !== 'system' || voiceList.length < 2);
+  const v = chosenVoice();
+  const others = voiceList.filter((x) => x !== v).map((x) => x.name);
+  const risk = [
+    others.length ? `${others.join(' e ')} também ${others.length > 1 ? 'estão abertos e vão' : 'está aberto e vai'} vazar: o Windows só deixa tirar um app.` : '',
+    discordInBrowser() ? 'Tem Discord aberto no navegador: ele vaza no som do sistema.' : '',
+  ].filter(Boolean).join(' ');
   hint.textContent = {
     window: /chrome|msedge|firefox|opera|brave/i.test($('#audioMode').dataset.winName)
       ? 'É um navegador: vai o som de todas as abas dele. Use outro navegador para o resto, se precisar.'
-      : 'As vozes do Discord não vão junto.',
-    nodiscord: 'Tudo que toca no seu PC, menos o Discord.',
+      : 'Só o som deste programa: nenhum app de voz vai junto.',
+    system: (v ? `Tudo que toca no seu PC, menos o ${v.name}.` : 'Tudo que toca no seu PC. Nenhum app de voz conhecido está aberto.')
+      + (risk ? ` ⚠ ${risk} Para jogos, prefira "Só o som desta janela".` : ''),
     pick: 'Só o som do app escolhido (precisa estar tocando ou ter tocado algo).',
     none: '',
   }[mode] || '';
+  hint.style.color = mode === 'system' && risk ? 'var(--warn)' : '';
   if (mode === 'pick') {
     appSel.innerHTML = '<option>Carregando…</option>';
     const list = (await T.audioSessions()).filter((s) => !/^discord/i.test(s.name) && !/^telinha/i.test(s.name));
@@ -621,7 +648,11 @@ async function goLive() {
     let opts = null;
     if (mode === 'window') { opts = { mode: 'app', pid: Number($('#audioMode').dataset.winPid) }; audioInfo = `Áudio: só ${$('#audioMode').dataset.winName}`; }
     else if (mode === 'pick' && $('#audioApp').value) { opts = { mode: 'app', pid: Number($('#audioApp').value) }; audioInfo = `Áudio: só ${$('#audioApp').selectedOptions[0].textContent.replace(/\s+●.*/, '')}`; }
-    else if (mode === 'nodiscord') { opts = { mode: 'nodiscord' }; audioInfo = 'Áudio: sistema sem o Discord'; }
+    else if (mode === 'system') {
+      const v = chosenVoice();
+      opts = v ? { mode: 'exclude', pid: v.pid, name: v.name } : { mode: 'system' };
+      audioInfo = v ? `Áudio: sistema sem o ${v.name}` : 'Áudio: sistema';
+    }
     if (opts) stream.addTrack(await startAudioPipe(opts));
   }
 
@@ -1179,8 +1210,8 @@ const SFX = {
   leave: () => tone([[784, 0, 0.18], [523, 0.09, 0.28]]),
   live: () => tone([[523, 0, 0.2], [659, 0.08, 0.2], [784, 0.16, 0.35]], 'triangle'),
 };
-// transmitindo com "som do sistema, sem o Discord", o som do Telinha iria junto na transmissão
-const sfxMuted = () => settings.sounds === false || (my && my.audioMode === 'nodiscord');
+// transmitindo com "som do sistema", o som do Telinha iria junto (o próprio app só fica de fora se não houver app de voz)
+const sfxMuted = () => settings.sounds === false || (my && my.audioMode === 'system');
 function sfx(kind, text) {
   if (!sfxMuted()) SFX[kind]();
   else if (settings.sounds !== false || kind === 'live') return toast(text);

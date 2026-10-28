@@ -172,6 +172,7 @@ ipcMain.handle('sources', async () => {
 });
 
 ipcMain.handle('audio:sessions', () => audio.sessions());
+ipcMain.handle('audio:voiceApps', () => audio.voiceApps());
 ipcMain.handle('audio:pidForSource', async (_e, sourceId) => {
   const m = /^window:(\d+):/.exec(sourceId || '');
   return m ? audio.pidForHwnd(m[1]) : null;

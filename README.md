@@ -7,7 +7,7 @@ Transmissão de tela entre amigos no Windows: **P2P, 1080p60 (ou de 360p até 4K
 - O vídeo vai **direto** de quem transmite para quem assiste. Quem transmite usa o próprio upload.
 - Um dos PCs é o **host**, que só repassa as mensagens de conexão (pouquíssimos dados). Se o host sair, outro assume sozinho.
 - Mais de uma pessoa pode transmitir ao mesmo tempo, e você assiste uma ou várias, cada uma com seu próprio volume.
-- O áudio pode ser **só da janela/app compartilhado** ou **o sistema todo, menos o Discord**. Assim a voz da call não vaza.
+- O áudio pode ser **só da janela/app compartilhado** ou **o sistema todo, menos o app de voz** (Discord, TeamSpeak, Teams…). Assim a voz da call não vaza.
 
 ---
 
@@ -68,7 +68,7 @@ Como a escolha funciona:
 1. Escolha uma **Tela** ou **Janela**.
 2. Escolha o **Áudio**:
    - *Só o som desta janela (app.exe)*: aparece quando você escolhe uma janela. Só o som daquele programa vai junto. Se a janela for de um navegador, vai o som de todas as abas dele.
-   - *Som do sistema, sem o Discord*: tudo que toca no PC, menos o Discord.
+   - *Som do sistema, sem o Discord* (ou sem o TeamSpeak, Teams etc.): tudo que toca no PC, menos o app de voz que estiver aberto, detectado sozinho. O Windows só deixa tirar **um** app: se tiver dois apps de voz abertos, ou o Discord no navegador, o Telinha avisa que um deles vai vazar.
    - *Escolher um app específico*: útil para transmitir a tela inteira com o som de um app só (Spotify, um jogo etc.).
    - *Sem áudio*.
 3. Escolha a **Qualidade**. Pode usar uma predefinição (360p30 até 4K60) ou ajustar resolução, FPS (15 a 144), bitrate (1 a 50 Mbps), codec e prioridade. O app lembra a última escolha.
