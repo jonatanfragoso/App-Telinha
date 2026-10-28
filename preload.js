@@ -35,5 +35,6 @@ contextBridge.exposeInMainWorld('telinha', {
   updateCheck: () => ipcRenderer.invoke('update:check'),
   updateStatus: () => ipcRenderer.invoke('update:status'),
   updateInstall: () => ipcRenderer.send('update:install'),
+  updateBusy: (b) => ipcRenderer.send('update:busy', b),
   onUpdate: on('update:status'),
 });

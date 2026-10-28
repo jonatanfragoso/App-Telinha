@@ -142,7 +142,7 @@ Se alterar o `native/audiocap.cpp`, recompile com:
 
 ## 6. Atualizações automáticas
 
-O app instalado verifica o **GitHub Releases** ao abrir e a cada 2 horas. Quando encontra uma versão nova, baixa em segundo plano e mostra o botão verde **Atualizar para x.y.z**. Clicando, ele instala e reabre em poucos segundos, sem precisar desinstalar nada. Se a pessoa não clicar, a atualização é instalada quando ela fechar o app.
+O app instalado verifica o **GitHub Releases** ao abrir e a cada 2 horas. Quando encontra uma versão nova, baixa em segundo plano (esperando terminar se você estiver transmitindo ou assistindo) e mostra uma faixa no topo: **Nova versão disponível. [Atualizar agora] [Depois]**. Clicando, ele instala e reabre em poucos segundos, sem precisar desinstalar nada. **Nada é instalado sem você clicar**; se escolher "Depois", a faixa volta na próxima vez que abrir o app, e o botão verde **Atualizar para x.y.z** fica no topo.
 
 ### Configuração
 

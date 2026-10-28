@@ -204,3 +204,8 @@ details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
 fieldset.games { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; margin: 0; }
 fieldset.games legend { font-size: 13px; padding: 0 4px; }
 .form label.check { flex-direction: row; align-items: center; gap: 8px; }
+
+/* ---- faixa de atualização ---- */
+.upd-banner { flex: none; display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: rgba(60,207,142,.12); border-bottom: 1px solid var(--ok); font-size: 13px; }
+.upd-banner span { flex: 1; }
+.btn.update-now { background: var(--ok); border-color: var(--ok); color: #0f1115; font-weight: 700; }

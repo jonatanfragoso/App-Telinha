@@ -174,6 +174,7 @@ ipcMain.on('mesh:refresh', () => mesh && mesh.tick());
 ipcMain.handle('update:check', () => updater.check());
 ipcMain.handle('update:status', () => updater.status);
 ipcMain.on('update:install', () => { audio.stop(); updater.install(); });
+ipcMain.on('update:busy', (_e, b) => updater.setBusy(b));
 ipcMain.handle('games:current', () => games.current());
 ipcMain.on('win:attention', () => {
   if (!win || win.isFocused()) return;

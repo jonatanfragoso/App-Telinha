@@ -188,6 +188,7 @@ async function onOffer(m) {
   await pc.setLocalDescription(ans);
   T.send(m.from, { type: 'answer', sdp: ans.sdp });
   startInStats(m.from);
+  syncBusy();
 }
 
 async function onIce(m) {
@@ -207,6 +208,7 @@ function onEnded(streamerId) {
   w.pc = null;
   w.video.srcObject = null;
   setTileOverlay(streamerId, 'A transmissão terminou.', false, false, true);
+  syncBusy();
 }
 
 function watch(streamerId) {
@@ -695,6 +697,7 @@ function renderMembers() {
 }
 
 function renderLive() {
+  syncBusy();
   const box = $('#liveList'); box.innerHTML = '';
   const live = state.members.filter((m) => m.streaming && m.id !== state.selfId);
   if (!live.length) { box.innerHTML = '<div class="empty">Ninguém transmitindo agora. Clique em <b>Transmitir</b> pra começar.</div>'; return; }
@@ -962,21 +965,33 @@ function renderUpdate(u) {
     checking: 'Procurando atualização…',
     latest: `Você está na versão mais recente (${u.version}).`,
     downloading: `Baixando a versão ${u.version}… ${u.percent || 0}%`,
+    waiting: `Versão ${u.version} disponível. O download começa quando você parar de transmitir ou assistir.`,
     ready: `Versão ${u.version} pronta. Clique em "Atualizar" no topo.`,
     error: `Não consegui verificar: ${u.message}`,
   }[u.state] || '';
   $('#updText').textContent = txt;
   const b = $('#btnUpdate');
   b.classList.toggle('hidden', u.state !== 'ready');
-  if (u.state === 'ready') { b.textContent = `Atualizar para ${u.version}`; if (!renderUpdate.told) { renderUpdate.told = true; toast(`Nova versão ${u.version} baixada. Clique em "Atualizar" quando quiser.`, 6000); } }
+  if (u.state === 'ready') b.textContent = `Atualizar para ${u.version}`;
+  // a faixa volta toda vez que o app abre, até a pessoa atualizar
+  $('#updBannerText').innerHTML = `<b>Nova versão ${esc(u.version)} disponível.</b> Leva poucos segundos e o Telinha abre de novo.`;
+  $('#updBanner').classList.toggle('hidden', u.state !== 'ready' || renderUpdate.later);
 }
-T.onUpdate(renderUpdate);
-$('#btnUpdCheck').onclick = async () => renderUpdate(await T.updateCheck());
-$('#btnUpdate').onclick = () => {
+function installUpdate() {
   if (my && !confirm('Você está transmitindo. Atualizar agora encerra a transmissão. Continuar?')) return;
   if (my) stopLive();
   T.updateInstall();
-};
+}
+// download da atualização espera enquanto há transmissão (própria ou assistida)
+function syncBusy() {
+  const busy = !!my || [...inPcs.values()].some((w) => w.pc);
+  if (busy !== syncBusy.last) { syncBusy.last = busy; T.updateBusy(busy); }
+}
+T.onUpdate(renderUpdate);
+$('#btnUpdCheck').onclick = async () => renderUpdate(await T.updateCheck());
+$('#btnUpdate').onclick = installUpdate;
+$('#btnUpdNow').onclick = installUpdate;
+$('#btnUpdLater').onclick = () => { renderUpdate.later = true; $('#updBanner').classList.add('hidden'); };
 
 (async () => {
   renderUpdate(await T.updateStatus());
