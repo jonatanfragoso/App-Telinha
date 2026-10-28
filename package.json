@@ -1,0 +1,76 @@
+{
+  "name": "telinha",
+  "version": "0.1.0",
+  "description": "Stream de tela entre amigos, P2P via Tailscale",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --x64 --publish never",
+    "release": "electron-builder --win --x64 --publish always"
+  },
+  "author": "Jonatan Fragoso",
+  "license": "MIT",
+  "dependencies": {
+    "electron-updater": "^6.8.11",
+    "ws": "^8.22.0"
+  },
+  "devDependencies": {
+    "electron": "^45.1.0",
+    "electron-builder": "^26.18.0"
+  },
+  "productName": "Telinha",
+  "build": {
+    "appId": "br.jonatan.telinha",
+    "productName": "Telinha",
+    "files": [
+      "main.js",
+      "preload.js",
+      "lib/**",
+      "renderer/**",
+      "build/icon.png",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "native/audiocap.exe",
+        "to": "audiocap.exe"
+      }
+    ],
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": true
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Telinha",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "artifactName": "Telinha-Setup-${version}.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "jonatanfragoso",
+        "repo": "App-Telinha",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jonatanfragoso/App-Telinha.git"
+  }
+}

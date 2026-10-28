@@ -1,0 +1,45 @@
+# Ao enviar uma tag "v*" (ex.: v0.2.0), o GitHub compila o instalador no Windows
+# e publica no Releases. Os apps instalados dos amigos encontram e baixam sozinhos.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Compilar audiocap.exe (helper de áudio)
+        # se falhar, usa o native/audiocap.exe que já está no repositório
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          cmd /c "`"$vs\VC\Auxiliary\Build\vcvars64.bat`" && cd native && build.bat"
+
+      - name: Conferir se a versão bate com a tag
+        shell: bash
+        run: |
+          V=$(node -p "require('./package.json').version")
+          if [ "v$V" != "${GITHUB_REF_NAME}" ] && [ "${GITHUB_EVENT_NAME}" = "push" ]; then
+            echo "package.json está em $V mas a tag é ${GITHUB_REF_NAME}. Rode: npm version x.y.z"; exit 1
+          fi
+
+      - run: npm ci
+
+      - name: Gerar instalador e publicar
+        run: npm run release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

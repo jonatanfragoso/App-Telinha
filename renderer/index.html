@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; media-src 'self' blob: mediastream:; style-src 'self' 'unsafe-inline'" />
+  <title>Telinha</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="logo"></span>Telinha</div>
+    <div id="netStatus" class="net-status"><span class="dot"></span><span class="txt">Procurando a galera…</span></div>
+    <div class="top-actions">
+      <button id="btnUpdate" class="btn update hidden" title="Instala a nova versão e abre o Telinha de novo">Atualizar</button>
+      <button id="btnStream" class="btn primary"><span class="rec"></span>Transmitir</button>
+      <button id="btnSettings" class="btn ghost icon" title="Configurações">⚙</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="side">
+      <div class="side-head">
+        <h2>Na sala</h2>
+        <span id="roomName" class="pill"></span>
+      </div>
+      <ul id="members" class="members"></ul>
+      <div id="sideHint" class="side-hint"></div>
+    </aside>
+
+    <main class="main">
+      <section id="myLive" class="my-live hidden">
+        <video id="myPreview" muted autoplay playsinline></video>
+        <div class="my-live-body">
+          <div class="my-live-title"><span class="live-badge">AO VIVO</span><b id="myTitle"></b></div>
+          <div id="myAudioInfo" class="muted small"></div>
+          <div id="myViewers" class="viewer-stats"></div>
+          <div class="my-live-controls">
+            <label class="inline">Resolução <select id="liveRes" class="q-res"></select></label>
+            <label class="inline">FPS <select id="liveFps" class="q-fps"></select></label>
+            <label class="inline">Bitrate <select id="liveBitrate" class="q-bitrate"></select></label>
+            <label class="inline">Prioridade
+              <select id="livePref">
+                <option value="maintain-framerate">Fluidez (fps)</option>
+                <option value="maintain-resolution">Nitidez (resolução)</option>
+                <option value="balanced">Equilibrado</option>
+              </select>
+            </label>
+            <button id="btnStop" class="btn danger">Parar transmissão</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="live-section">
+        <h2>Ao vivo agora</h2>
+        <div id="liveList" class="live-list"></div>
+      </section>
+
+      <section id="watchArea" class="watch-area"></section>
+    </main>
+  </div>
+
+  <!-- Seletor de transmissão -->
+  <div id="pickModal" class="modal hidden">
+    <div class="modal-card wide">
+      <div class="modal-head">
+        <h3>O que você quer transmitir?</h3>
+        <button class="btn ghost icon" data-close>✕</button>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-tab="screen">Telas</button>
+        <button class="tab" data-tab="window">Janelas</button>
+        <button id="btnReloadSources" class="btn ghost small">Atualizar</button>
+      </div>
+      <div id="sourceGrid" class="source-grid"></div>
+
+      <div class="pick-options">
+        <div class="opt-group">
+          <label>Áudio</label>
+          <select id="audioMode"></select>
+          <select id="audioApp" class="hidden"></select>
+          <div id="audioHint" class="muted small"></div>
+        </div>
+        <div class="opt-row">
+          <div class="opt-group"><label>Predefinição</label>
+            <select id="qPreset">
+              <option value="">Personalizado</option>
+              <option value="640x360|30|1.5">Economia: 360p30</option>
+              <option value="854x480|30|2.5">Leve: 480p30</option>
+              <option value="1280x720|30|4">720p30</option>
+              <option value="1280x720|60|6">720p60</option>
+              <option value="1920x1080|30|6">1080p30</option>
+              <option value="1920x1080|60|10" selected>1080p60</option>
+              <option value="2560x1440|60|16">2K (1440p60)</option>
+              <option value="3840x2160|30|20">4K30</option>
+              <option value="3840x2160|60|35">4K60</option>
+            </select>
+          </div>
+          <div class="opt-group"><label>Resolução</label>
+            <select id="qRes" class="q-res"></select>
+          </div>
+          <div class="opt-group"><label>FPS</label>
+            <select id="qFps" class="q-fps"></select>
+          </div>
+          <div class="opt-group"><label>Bitrate</label>
+            <select id="qBitrate" class="q-bitrate"></select>
+          </div>
+          <div class="opt-group"><label>Codec</label>
+            <select id="qCodec">
+              <option value="H264" selected>H.264 (mais compatível)</option>
+              <option value="VP9">VP9</option>
+              <option value="AV1">AV1 (GPUs recentes)</option>
+            </select>
+          </div>
+          <div class="opt-group"><label>Prioridade</label>
+            <select id="qPref">
+              <option value="maintain-framerate" selected>Fluidez</option>
+              <option value="maintain-resolution">Nitidez</option>
+              <option value="balanced">Equilibrado</option>
+            </select>
+          </div>
+        </div>
+        <div id="uploadHint" class="muted small"></div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" data-close>Cancelar</button>
+        <button id="btnGoLive" class="btn primary" disabled>Começar transmissão</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Configurações -->
+  <div id="setModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>Configurações</h3>
+        <button class="btn ghost icon" data-close>✕</button>
+      </div>
+      <div class="form">
+        <label>Seu nome<input id="sName" maxlength="32" /></label>
+        <label>Sala<input id="sRoom" maxlength="32" />
+          <span class="muted small">Só quem estiver na mesma sala aparece pra você.</span></label>
+        <label>Ser host
+          <select id="sPriority">
+            <option value="10">Sempre que eu estiver online (host fixo)</option>
+            <option value="0">Normal</option>
+            <option value="-10">Evitar (só se não houver mais ninguém)</option>
+          </select>
+          <span class="muted small">O host só repassa as mensagens de conexão. O vídeo vai direto entre os PCs.</span>
+        </label>
+        <label>IPs extras (opcional, um por linha)
+          <textarea id="sExtra" rows="2" placeholder="Ex.: 192.168.0.20 para testar na rede local sem Tailscale"></textarea></label>
+        <label>Caminho do tailscale.exe (opcional)
+          <input id="sTsPath" placeholder="C:\Program Files\Tailscale\tailscale.exe" /></label>
+        <div class="upd-row">
+          <div><b>Atualizações</b><div id="updText" class="muted small">—</div></div>
+          <button id="btnUpdCheck" class="btn small">Verificar agora</button>
+        </div>
+        <details>
+          <summary>Registro</summary>
+          <pre id="logBox" class="log"></pre>
+        </details>
+      </div>
+      <div class="modal-foot">
+        <span id="appVersion" class="muted small"></span>
+        <button class="btn ghost" data-close>Cancelar</button>
+        <button id="btnSaveSettings" class="btn primary">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="app.js"></script>
+</body>
+</html>
