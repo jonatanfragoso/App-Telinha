@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Telinha — transmissão de tela entre amigos</title>
+  <meta name="description" content="Transmita a tela do PC para os seus amigos, direto e sem servidor, com o som só do jogo ou app que você escolher. Passo a passo para baixar, configurar e usar." />
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #161920;
+      --panel-2: #1d212a;
+      --line: #262b36;
+      --text: #e8eaf0;
+      --muted: #8b92a3;
+      --accent: #ff5a3c;
+      --accent-2: #ff7a5c;
+      --ok: #3ccf8e;
+      --warn: #f5b53d;
+      --win-blue: #1f4e9c;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font: 16px/1.6 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+    a { color: var(--accent-2); }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 0 16px; }
+
+    /* topo */
+    header.top { border-bottom: 1px solid var(--line); background: var(--panel); position: sticky; top: 0; z-index: 5; }
+    header.top .wrap { display: flex; align-items: center; gap: 16px; height: 56px; }
+    .brand { font-weight: 700; display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .logo { width: 22px; height: 16px; border-radius: 4px; border: 2px solid var(--accent); position: relative; display: inline-block; }
+    .logo::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 10px; height: 2px; background: var(--accent); transform: translateX(-50%); border-radius: 2px; }
+    nav.links { margin-left: auto; display: flex; gap: 18px; font-size: 14px; }
+    nav.links a { color: var(--muted); text-decoration: none; }
+    nav.links a:hover { color: var(--text); }
+    @media (max-width: 640px) { nav.links { display: none; } }
+
+    /* hero */
+    .hero { padding: 56px 0 40px; text-align: center; }
+    .hero h1 { font-size: clamp(30px, 6vw, 46px); line-height: 1.15; margin: 0 0 14px; letter-spacing: -.01em; }
+    .hero h1 em { font-style: normal; color: var(--accent); }
+    .hero p.lead { color: var(--muted); font-size: 18px; max-width: 620px; margin: 0 auto 28px; }
+    .dl { display: inline-flex; flex-direction: column; align-items: center; gap: 10px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none;
+      background: var(--accent); color: #fff; font-weight: 700; font-size: 18px; border-radius: 10px;
+      padding: 14px 26px; border: none; cursor: pointer;
+    }
+    .btn:hover { background: var(--accent-2); }
+    .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--text); font-size: 15px; font-weight: 600; padding: 9px 16px; }
+    .btn.ghost:hover { border-color: #3a4150; background: var(--panel-2); }
+    .dl small { color: var(--muted); font-size: 13px; }
+    .other { margin-top: 6px; font-size: 14px; color: var(--muted); }
+    .other select { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font: inherit; max-width: 100%; }
+    .feats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 40px 0 0; text-align: left; }
+    .feat { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; font-size: 14px; color: var(--muted); }
+    .feat b { display: block; color: var(--text); font-size: 15px; margin-bottom: 2px; }
+
+    /* seções */
+    section.step { padding: 36px 0; border-top: 1px solid var(--line); }
+    .step-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+    .num { flex: none; width: 36px; height: 36px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; display: grid; place-items: center; }
+    h2 { margin: 0; font-size: 24px; }
+    h3 { font-size: 18px; margin: 22px 0 6px; }
+    p, li { color: #cfd3dc; }
+    ol, ul { padding-left: 22px; }
+    li { margin: 6px 0; }
+    li::marker { color: var(--muted); }
+    .ui { background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; font-size: .92em; color: var(--text); white-space: nowrap; }
+    code { background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; font-size: .9em; }
+    .note { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: 8px; padding: 12px 14px; margin: 14px 0; font-size: 15px; }
+    .note.ok { border-left-color: var(--ok); }
+    .note p { margin: 4px 0; }
+
+    /* expansíveis */
+    details { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; margin: 14px 0; }
+    details > summary {
+      cursor: pointer; padding: 14px 16px; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 10px;
+    }
+    details > summary::-webkit-details-marker { display: none; }
+    details > summary::before { content: "▸"; color: var(--accent); transition: transform .15s; }
+    details[open] > summary::before { transform: rotate(90deg); }
+    details > summary .tag { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--muted); border: 1px solid var(--line); border-radius: 99px; padding: 1px 8px; white-space: nowrap; }
+    details .inner { padding: 0 18px 14px; border-top: 1px solid var(--line); }
+    details.big > summary { font-size: 17px; }
+    details.big { border-color: var(--accent); }
+
+    /* desenhos das janelas */
+    .mock { margin: 14px 0; border-radius: 10px; overflow: hidden; border: 1px solid #3a4150; max-width: 520px; font-size: 14px; }
+    .mock .bar { background: #2b2f38; padding: 6px 10px; font-size: 12px; color: var(--muted); }
+    .mock .body { padding: 14px 16px; background: #f3f3f3; color: #1b1b1b; }
+    .mock .body p { color: #1b1b1b; margin: 6px 0; }
+    .mock .body .link { color: #0a5bd3; text-decoration: underline; }
+    .mock .row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; flex-wrap: wrap; }
+    .mock .b { border: 1px solid #b5b5b5; background: #fff; color: #1b1b1b; border-radius: 4px; padding: 4px 12px; font-size: 13px; }
+    .mock .b.hi { outline: 3px solid var(--accent); outline-offset: 2px; font-weight: 700; }
+    .mock.smart .body { background: var(--win-blue); color: #fff; }
+    .mock.smart .body p { color: #fff; }
+    .mock.smart .body .link { color: #fff; }
+    .mock.smart .b { background: transparent; color: #fff; border-color: #fff; }
+    .mock .hi-text { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 3px; font-weight: 700; }
+
+    .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+    table { border-collapse: collapse; width: 100%; font-size: 14px; margin: 10px 0; }
+    th, td { border-bottom: 1px solid var(--line); padding: 8px 6px; text-align: left; }
+    th { color: var(--muted); font-weight: 600; }
+    .table-scroll { overflow-x: auto; }
+
+    footer { border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--muted); font-size: 14px; text-align: center; }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="#"><span class="logo"></span>Telinha</a>
+      <nav class="links">
+        <a href="#tailscale">Tailscale</a>
+        <a href="#instalar">Instalar</a>
+        <a href="#usar">Como usar</a>
+        <a href="#problemas">Problemas</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <h1>Mostre sua tela para os amigos,<br><em>direto e sem lag de servidor</em></h1>
+      <p class="lead">O Telinha transmite a tela do seu PC para a galera em até 1080p60 (ou 4K), com o som só do jogo ou app que você escolher. A voz continua no Discord e não vaza na transmissão.</p>
+      <div class="dl">
+        <a id="dlBtn" class="btn" href="https://github.com/jonatanfragoso/App-Telinha/releases/latest">⬇ Baixar o Telinha</a>
+        <small id="dlInfo">Windows 10 (versão 2004 ou mais nova) ou Windows 11 · grátis</small>
+        <div class="other" id="otherBox" hidden>
+          Outra versão:
+          <select id="otherSel"><option value="">escolha…</option></select>
+        </div>
+      </div>
+      <div class="feats">
+        <div class="feat"><b>Direto entre os PCs</b>O vídeo vai do seu PC para o dos seus amigos, sem passar por servidor nenhum.</div>
+        <div class="feat"><b>Som sem o Discord</b>Só o som do jogo, ou do PC inteiro menos o Discord. A call não vaza.</div>
+        <div class="feat"><b>Vários ao mesmo tempo</b>Mais de uma pessoa pode transmitir, e você assiste quantas quiser.</div>
+        <div class="feat"><b>Chat e "jogando agora"</b>Converse na sala ou no privado e veja quem está jogando o quê (se a pessoa permitir).</div>
+      </div>
+    </section>
+
+    <div class="note">
+      <p><b>Como funciona, em uma frase:</b> todo mundo do grupo instala o <b>Tailscale</b> (uma "rede particular" entre os PCs de vocês, grátis) e o <b>Telinha</b>. Depois disso é só abrir o Telinha que os amigos aparecem.</p>
+      <p>São <b>4 passos</b> e leva uns 10 minutos na primeira vez. Depois, as atualizações chegam sozinhas.</p>
+    </div>
+
+    <!-- ===================================================== 1. TAILSCALE -->
+    <section class="step" id="tailscale">
+      <div class="step-head"><span class="num">1</span><h2>Entrar na rede do grupo (Tailscale)</h2></div>
+      <p>O Tailscale liga os PCs do grupo como se estivessem na mesma casa. Uma pessoa <b>organiza</b> (cria a rede e convida) e os outros só <b>aceitam o convite</b>.</p>
+
+      <details class="big">
+        <summary>Fui convidado: como entro na rede? <span class="tag">a maioria das pessoas</span></summary>
+        <div class="inner">
+          <h3>a) Aceite o convite</h3>
+          <ol>
+            <li>Procure no seu e-mail uma mensagem do <b>Tailscale</b> com o convite (confira o spam também).</li>
+            <li>Clique em <span class="ui">Accept invite</span> (aceitar convite).</li>
+            <li>Ele pede para entrar com uma conta. Escolha <b>Google</b>, <b>Microsoft</b> ou outra, e use <b>a conta do mesmo e-mail que recebeu o convite</b>.</li>
+            <li>Se aparecer uma pergunta sobre o uso, pode responder qualquer coisa e seguir.</li>
+          </ol>
+
+          <h3>b) Instale o Tailscale no Windows</h3>
+          <ol>
+            <li>Abra <a href="https://tailscale.com/download/windows" target="_blank" rel="noopener">tailscale.com/download/windows</a> e clique em <span class="ui">Download Tailscale for Windows</span>.</li>
+            <li>Abra o arquivo baixado e clique em <span class="ui">Install</span>. Se o Windows perguntar "Deseja permitir que este app faça alterações?", clique em <span class="ui">Sim</span>.</li>
+            <li>No final, ele abre o navegador pedindo login. Entre com <b>a mesma conta</b> do passo anterior e clique em <span class="ui">Connect</span>.</li>
+          </ol>
+
+          <h3>c) Confira se deu certo</h3>
+          <ol>
+            <li>Perto do relógio do Windows (talvez dentro da setinha <span class="ui">^</span>) aparece o ícone do Tailscale: <b>quatro bolinhas</b>.</li>
+            <li>Clique nele: deve aparecer o seu nome e <b>Connected</b> (conectado).</li>
+            <li>Na lista <b>Network devices</b> você vê os PCs dos seus amigos. Se aparecerem, está tudo certo.</li>
+          </ol>
+          <div class="note ok"><p>Pode deixar o Tailscale sempre ligado: ele abre junto com o Windows e quase não usa internet.</p></div>
+        </div>
+      </details>
+
+      <details>
+        <summary>Sou eu quem organiza o grupo: como crio a rede? <span class="tag">só uma pessoa</span></summary>
+        <div class="inner">
+          <ol>
+            <li>Instale o Tailscale como no passo <b>b)</b> acima. No primeiro login, ele cria a sua rede (chamada de <i>tailnet</i>).</li>
+            <li>Abra o painel: <a href="https://login.tailscale.com/admin/users" target="_blank" rel="noopener">login.tailscale.com/admin/users</a>.</li>
+            <li>Clique em <span class="ui">Invite users</span>, coloque o e-mail de cada amigo e envie.</li>
+            <li>Mande o link desta página para eles seguirem o passo a passo.</li>
+          </ol>
+          <div class="note">
+            <p><b>Importante:</b> convide como <b>usuário</b> (Invite users). A opção "compartilhar dispositivo" não serve para o Telinha, porque só funciona em uma direção.</p>
+            <p>O plano grátis do Tailscale tem um limite de usuários. Confira se cabe o seu grupo em <a href="https://tailscale.com/pricing" target="_blank" rel="noopener">tailscale.com/pricing</a>.</p>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- ===================================================== 2. INSTALAR -->
+    <section class="step" id="instalar">
+      <div class="step-head"><span class="num">2</span><h2>Baixar e instalar o Telinha</h2></div>
+      <ol>
+        <li>Clique em <a href="#" class="dl-link">Baixar o Telinha</a>. Vem um arquivo <code>Telinha-Setup-…exe</code>.</li>
+        <li>O navegador pode dizer que o arquivo <b>"não é baixado com frequência"</b> ou que "pode ser perigoso". Veja abaixo como liberar.</li>
+        <li>Abra o arquivo e siga o instalador: <span class="ui">Avançar</span> → <span class="ui">Instalar</span> → <span class="ui">Concluir</span>.</li>
+      </ol>
+
+      <details>
+        <summary>Por que aparece esse aviso? É seguro?</summary>
+        <div class="inner">
+          <p>O aviso aparece com qualquer programa novo que ainda foi baixado por pouca gente e não tem uma "assinatura digital" paga. Não significa que encontraram vírus: significa que o navegador ainda <b>não conhece</b> o arquivo.</p>
+          <p>O Telinha é <a href="https://github.com/jonatanfragoso/App-Telinha" target="_blank" rel="noopener">código aberto</a>: qualquer pessoa pode ver tudo o que ele faz, e o instalador é montado automaticamente pelo GitHub a partir desse código.</p>
+        </div>
+      </details>
+
+      <div class="grid2">
+        <details>
+          <summary>Liberar no Google Chrome</summary>
+          <div class="inner">
+            <ol>
+              <li>Clique no ícone de downloads (a setinha <span class="ui">⬇</span> no canto de cima).</li>
+              <li>No Telinha, clique em <span class="ui">Manter</span> (ou nos <span class="ui">⋮</span> e depois <span class="ui">Fazer o download do arquivo suspeito</span>).</li>
+              <li>Se perguntar de novo, confirme <span class="ui">Fazer o download mesmo assim</span>.</li>
+            </ol>
+            <p class="muted" style="color:var(--muted);font-size:14px">O texto pode mudar um pouco conforme a versão do Chrome.</p>
+          </div>
+        </details>
+        <details>
+          <summary>Liberar no Microsoft Edge</summary>
+          <div class="inner">
+            <ol>
+              <li>No painel de downloads, passe o mouse no Telinha e clique nos <span class="ui">…</span></li>
+              <li>Clique em <span class="ui">Manter</span>.</li>
+              <li>Clique em <span class="ui">Mostrar mais</span> e depois em <span class="ui">Manter mesmo assim</span>.</li>
+            </ol>
+          </div>
+        </details>
+      </div>
+
+      <h3>Se o Windows mostrar uma tela azul ao abrir</h3>
+      <p>Clique em <b>Mais informações</b> e depois em <b>Executar assim mesmo</b>:</p>
+      <div class="mock smart">
+        <div class="bar">Windows</div>
+        <div class="body">
+          <p style="font-size:20px;font-weight:600">O Windows protegeu o computador</p>
+          <p>O Microsoft Defender SmartScreen impediu a inicialização de um aplicativo não reconhecido…</p>
+          <p><span class="link hi-text">Mais informações</span></p>
+          <div class="row"><span class="b hi">Executar assim mesmo</span><span class="b">Não executar</span></div>
+        </div>
+      </div>
+
+      <h3>Quando o Telinha abrir pela primeira vez</h3>
+      <p>O Firewall do Windows pergunta se o Telinha pode usar a rede. Marque <b>as duas opções</b> e clique em <b>Permitir acesso</b>:</p>
+      <div class="mock">
+        <div class="bar">Alerta de Segurança do Windows</div>
+        <div class="body">
+          <p><b>O Firewall do Windows Defender bloqueou alguns recursos deste aplicativo</b></p>
+          <p>☑ Redes privadas &nbsp; ☑ Redes públicas</p>
+          <div class="row"><span class="b hi">Permitir acesso</span><span class="b">Cancelar</span></div>
+        </div>
+      </div>
+      <div class="note ok"><p>Pode marcar as duas sem medo: o Telinha só conversa pela rede do Tailscale, nunca fica aberto para a internet.</p></div>
+    </section>
+
+    <!-- ===================================================== 3. CONFIGURAR -->
+    <section class="step" id="configurar">
+      <div class="step-head"><span class="num">3</span><h2>Primeira configuração (30 segundos)</h2></div>
+      <ol>
+        <li>Clique na engrenagem <span class="ui">⚙</span> no canto de cima.</li>
+        <li>Em <b>Seu nome</b>, coloque como seus amigos te chamam.</li>
+        <li>Deixe a <b>Sala</b> como <code>geral</code>, a não ser que o grupo tenha combinado outro nome.</li>
+        <li>Clique em <span class="ui">Salvar</span>.</li>
+      </ol>
+      <p>Pronto! À esquerda, em <b>Na sala</b>, aparecem os amigos que estão com o Telinha aberto. Embaixo de cada nome aparece <b>conexão direta</b> (ótimo) ou <b>via relay</b> (lento, veja <a href="#problemas">Problemas</a>).</p>
+
+      <details>
+        <summary>O que é o "host" com a coroa ♛? Preciso fazer alguma coisa?</summary>
+        <div class="inner">
+          <p>O host é um dos PCs que ajuda os outros a se encontrarem. O vídeo <b>não</b> passa por ele, então ele não fica mais pesado. O Telinha escolhe o host sozinho, e se o host sair, outro assume em segundos.</p>
+          <p>Se alguém do grupo deixa o PC ligado quase sempre, essa pessoa pode ir em <span class="ui">⚙</span> → <b>Ser host</b> → <b>Sempre que eu estiver online</b>. Os outros deixam em <b>Normal</b>.</p>
+        </div>
+      </details>
+    </section>
+
+    <!-- ===================================================== 4. USAR -->
+    <section class="step" id="usar">
+      <div class="step-head"><span class="num">4</span><h2>Usar com os amigos</h2></div>
+
+      <h3>📺 Transmitir a sua tela</h3>
+      <ol>
+        <li>Clique em <span class="ui">Transmitir</span>.</li>
+        <li>Escolha uma <b>Tela</b> inteira ou uma <b>Janela</b> (por exemplo, o jogo).</li>
+        <li>Em <b>Áudio</b>, escolha:
+          <ul>
+            <li><b>Só o som desta janela</b>: vai só o som do jogo/app escolhido;</li>
+            <li><b>Som do sistema, sem o Discord</b>: tudo que toca no PC, menos a call;</li>
+            <li><b>Escolher um app específico</b>: por exemplo, só o Spotify.</li>
+          </ul>
+        </li>
+        <li>Em <b>Qualidade</b>, <b>1080p60</b> é um bom começo. Se travar para quem assiste, baixe para 720p.</li>
+        <li>Clique em <span class="ui">Começar transmissão</span>. Para parar, clique em <span class="ui">Parar transmissão</span>.</li>
+      </ol>
+
+      <h3>👀 Assistir alguém</h3>
+      <p>Em <b>Ao vivo agora</b>, clique em <span class="ui">Assistir</span>. Cada transmissão abre num quadro com volume próprio. <b>Clique duas vezes</b> no vídeo para tela cheia.</p>
+
+      <h3>💬 Conversar</h3>
+      <p>O painel <b>Chat</b> à direita tem a conversa da sala inteira. Para falar só com uma pessoa, passe o mouse no nome dela e clique em <span class="ui">💬</span>. As mensagens não ficam salvas.</p>
+
+      <h3>🎮 Mostrar o que está jogando (opcional)</h3>
+      <p>Em <span class="ui">⚙</span> → <b>Jogos</b>, você pode ligar <b>"Mostrar para a sala quando eu estiver jogando"</b>. Vem desligado. Ligado, seus amigos veem o nome do jogo embaixo do seu nome, e só isso.</p>
+      <p>Se também ligar <b>"Deixar pedirem para eu transmitir"</b>, eles podem clicar em <span class="ui">Pedir transmissão</span> enquanto você joga. Você recebe um aviso para aceitar ou recusar, e mesmo aceitando <b>nada é transmitido até você escolher a tela e confirmar</b>.</p>
+
+      <details>
+        <summary>Quanto de internet eu preciso para transmitir?</summary>
+        <div class="inner">
+          <p>Quem transmite envia uma cópia para <b>cada</b> pessoa assistindo, usando o <b>upload</b> da sua internet:</p>
+          <div class="table-scroll">
+            <table>
+              <tr><th>Qualidade</th><th>Por pessoa</th><th>3 pessoas assistindo</th></tr>
+              <tr><td>720p30</td><td>~4 Mbps</td><td>~12 Mbps</td></tr>
+              <tr><td>1080p60</td><td>8–10 Mbps</td><td>~30 Mbps</td></tr>
+              <tr><td>1440p60</td><td>~16 Mbps</td><td>~48 Mbps</td></tr>
+              <tr><td>4K60</td><td>~35 Mbps</td><td>~105 Mbps</td></tr>
+            </table>
+          </div>
+          <p>Para assistir, qualquer internet de banda larga comum dá conta.</p>
+        </div>
+      </details>
+
+      <div class="note ok"><p><b>Atualizações:</b> quando sair uma versão nova, aparece um botão verde <b>Atualizar</b> no topo do Telinha. É só clicar. Se você não clicar, ela é instalada quando você fechar o app.</p></div>
+    </section>
+
+    <!-- ===================================================== PROBLEMAS -->
+    <section class="step" id="problemas">
+      <div class="step-head"><span class="num">?</span><h2>Deu problema?</h2></div>
+
+      <details>
+        <summary>"Tailscale não encontrado ou desligado"</summary>
+        <div class="inner"><p>Abra o Tailscale (ícone de quatro bolinhas perto do relógio) e veja se está <b>Connected</b>. Se não estiver, clique em <span class="ui">Log in</span> e entre com a conta do convite.</p></div>
+      </details>
+      <details>
+        <summary>Não aparece ninguém na sala</summary>
+        <div class="inner">
+          <ul>
+            <li>Os amigos estão com o Telinha <b>aberto</b>?</li>
+            <li>Todo mundo está na <b>mesma rede do Tailscale</b>? No menu do Tailscale, os PCs deles precisam aparecer em <b>Network devices</b>.</li>
+            <li>Todo mundo está na <b>mesma sala</b> (<span class="ui">⚙</span> → Sala)?</li>
+            <li>Você clicou em <b>Permitir acesso</b> no aviso do Firewall? Se clicou em Cancelar, desinstale e instale o Telinha de novo para a pergunta voltar.</li>
+          </ul>
+        </div>
+      </details>
+      <details>
+        <summary>Aparece "via relay (lento)"</summary>
+        <div class="inner"><p>O Tailscale não conseguiu ligar os dois PCs diretamente e está usando um caminho mais lento. Geralmente resolve reiniciando o Tailscale (clique no ícone → <span class="ui">Exit</span> e abra de novo) ou ativando o <b>UPnP</b> no roteador.</p></div>
+      </details>
+      <details>
+        <summary>A imagem está travando ou borrada</summary>
+        <div class="inner"><p>Quem transmite pode baixar a resolução ou o bitrate <b>sem parar a transmissão</b>, no painel do topo. Se aparecer <b>limitado: banda</b>, o upload não está dando conta; se aparecer <b>limitado: CPU</b>, o PC está pesado.</p></div>
+      </details>
+      <details>
+        <summary>A tela do jogo fica preta</summary>
+        <div class="inner"><p>Coloque o jogo em modo <b>janela sem bordas</b> (borderless) nas configurações de vídeo dele, ou transmita a <b>Tela</b> inteira em vez da janela.</p></div>
+      </details>
+      <details>
+        <summary>O som não foi junto</summary>
+        <div class="inner"><p>Precisa do Windows 10 versão 2004 ou mais novo. O app escolhido precisa estar tocando som. Os detalhes do erro ficam em <span class="ui">⚙</span> → <b>Registro</b>.</p></div>
+      </details>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      Telinha é código aberto · <a href="https://github.com/jonatanfragoso/App-Telinha" target="_blank" rel="noopener">GitHub</a> ·
+      <a href="https://github.com/jonatanfragoso/App-Telinha/releases" target="_blank" rel="noopener">todas as versões</a>
+    </div>
+  </footer>
+
+  <script>
+    // Busca as versões publicadas no GitHub. Se falhar, os links continuam indo para a página de Releases.
+    (async () => {
+      const btn = document.getElementById('dlBtn');
+      try {
+        const res = await fetch('https://api.github.com/repos/jonatanfragoso/App-Telinha/releases?per_page=15');
+        if (!res.ok) return;
+        const rels = (await res.json())
+          .filter((r) => !r.draft && !r.prerelease)
+          .map((r) => ({ tag: r.tag_name, date: r.published_at, exe: (r.assets || []).find((a) => /\.exe$/i.test(a.name)) }))
+          .filter((r, i, all) => r.exe && all.findIndex((x) => x.tag === r.tag && x.exe) === i); // há releases duplicadas por tag
+        if (!rels.length) return;
+        const [latest, ...older] = rels;
+        const ver = latest.tag.replace(/^v/, '');
+        btn.href = latest.exe.browser_download_url;
+        btn.textContent = `⬇ Baixar o Telinha ${ver}`;
+        const mb = Math.round(latest.exe.size / 1048576);
+        document.getElementById('dlInfo').textContent = `Versão ${ver} · ${new Date(latest.date).toLocaleDateString('pt-BR')} · ${mb} MB · Windows 10 (2004+) ou 11`;
+        document.querySelectorAll('.dl-link').forEach((a) => { a.href = latest.exe.browser_download_url; });
+        if (older.length) {
+          const sel = document.getElementById('otherSel');
+          for (const r of older) {
+            const o = document.createElement('option');
+            o.value = r.exe.browser_download_url;
+            o.textContent = `${r.tag} (${new Date(r.date).toLocaleDateString('pt-BR')})`;
+            sel.append(o);
+          }
+          sel.onchange = () => { if (sel.value) location.href = sel.value; };
+          document.getElementById('otherBox').hidden = false;
+        }
+      } catch {}
+    })();
+    document.querySelectorAll('.dl-link').forEach((a) => {
+      a.addEventListener('click', (e) => { if (a.getAttribute('href') === '#') { e.preventDefault(); document.getElementById('dlBtn').click(); } });
+    });
+  </script>
+</body>
+</html>

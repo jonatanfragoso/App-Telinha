@@ -39,20 +39,22 @@ jobs:
 
       - run: npm ci
 
-      - name: Gerar instalador e publicar
-        run: npm run release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Gerar instalador
+        run: npm run dist
 
-      # Garante que o latest.yml (que o atualizador lê) esteja na Release.
-      - name: Garantir latest.yml na Release
+      # Cria a Release com um comando só e envia latest.yml (que o atualizador lê) + .exe + .blockmap.
+      # Antes o electron-builder publicava sozinho, enviando os arquivos em paralelo, e criava
+      # duas Releases para a mesma tag (uma delas sem o .exe ou sem o latest.yml).
+      - name: Publicar Release
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "Arquivos gerados:"; ls -la dist
           test -f dist/latest.yml || { echo "ERRO: dist/latest.yml não foi gerado"; exit 1; }
-          TAG="v$(node -p "require('./package.json').version")"
+          V="$(node -p "require('./package.json').version")"
+          TAG="v$V"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "$V" --generate-notes
           gh release upload "$TAG" dist/latest.yml dist/*.exe dist/*.blockmap --clobber
           echo "Arquivos na Release $TAG:"
           gh release view "$TAG" --json assets --jq '.assets[].name'

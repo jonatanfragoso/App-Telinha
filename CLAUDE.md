@@ -52,9 +52,9 @@ npm version patch          # ou minor; cria a tag vX.Y.Z
 git push --follow-tags     # o Actions compila e publica a Release
 ```
 
-Commits sem tag **não** geram atualização. O workflow tem um passo final que reenvia `latest.yml` + `.exe` + `.blockmap` com `gh release upload --clobber`, porque na v0.1.0 o `latest.yml` ficou de fora e o updater dava 404. Não remova esse passo.
+Commits sem tag **não** geram atualização. No workflow o `electron-builder` só compila (`npm run dist`, que também gera o `latest.yml`), e um passo com `gh release create` + `gh release upload --clobber` publica tudo. Não volte a usar `npm run release` no CI: o electron-builder envia os arquivos em paralelo e criava **duas Releases por tag** (até a v0.2.0), o que fez o `latest.yml` sumir na v0.1.0.
 
-Link de download para amigos novos: https://github.com/jonatanfragoso/App-Telinha/releases/latest
+Link para amigos novos: https://jonatanfragoso.github.io/App-Telinha/ (GitHub Pages, pasta `docs/`, branch main; sai no ar com um push, sem tag). A página busca as versões na API do GitHub e ignora as releases duplicadas. Download direto: https://github.com/jonatanfragoso/App-Telinha/releases/latest
 
 ## Estado atual / pendências
 

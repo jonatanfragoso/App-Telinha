@@ -1,5 +1,7 @@
 # Telinha
 
+**Página para os amigos (download + passo a passo):** https://jonatanfragoso.github.io/App-Telinha/
+
 Transmissão de tela entre amigos no Windows: **P2P, 1080p60 (ou de 360p até 4K), com áudio só do app que você escolher**, sem servidor. A conexão entre os PCs passa pelo **Tailscale**.
 
 - O vídeo vai **direto** de quem transmite para quem assiste. Quem transmite usa o próprio upload.
