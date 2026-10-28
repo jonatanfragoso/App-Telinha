@@ -76,6 +76,19 @@ Durante a transmissão, o painel do topo mostra cada pessoa assistindo, com fps,
 
 **Para assistir**, procure em **Ao vivo agora** e clique em **Assistir**. Dá pra assistir várias transmissões ao mesmo tempo, cada uma em um quadro com volume próprio. Clique duplo (ou ⛶) deixa em tela cheia, e ⓘ mostra as estatísticas.
 
+### Chat
+
+O painel **💬 Chat** à direita tem a conversa da **Sala** (todo mundo da sala vê) e conversas privadas: passe o mouse em alguém da lista e clique em 💬. As mensagens não ficam salvas: fechou o app, sumiram. O botão **💬 Chat** no topo esconde/mostra o painel e mostra quantas mensagens novas chegaram.
+
+### Jogando agora e pedidos de transmissão (opcional)
+
+Em ⚙ → **Jogos** dá pra ligar **"Mostrar para a sala quando eu estiver jogando"**. Vem **desligado**: desligado, o Telinha nem verifica o que está aberto.
+
+- Ligado, aparece **🎮 Nome do jogo** embaixo do seu nome na lista. Só o nome do jogo vai para a sala, nunca título de janela ou outros programas.
+- O jogo é reconhecido pela lista de jogos que o próprio Discord usa, pelas pastas da Steam, Epic, GOG, Xbox, Riot, EA e Ubisoft, e pela sua lista em **Meus jogos** (ex.: `eldenring.exe = Elden Ring`). Em **Nunca mostrar** você bloqueia um .exe.
+- Com **"Deixar pedirem para eu transmitir enquanto jogo"**, os outros veem o botão **Pedir transmissão**, mas **só enquanto você está jogando**. Você recebe um aviso com **Escolher o que transmitir** ou **Recusar**. Aceitar só abre a escolha de tela: **nada é transmitido sem você confirmar**.
+- Cada pessoa pode pedir no máximo uma vez a cada 10 minutos (30 depois de uma recusa). Sem resposta em 2 minutos, o pedido expira.
+
 ### Quanto de upload eu preciso?
 
 Quem transmite envia uma cópia para **cada** pessoa assistindo:
@@ -110,6 +123,7 @@ lib/mesh.js          descoberta via Tailscale, eleição de host, sinalização
 lib/tailscale.js     lê "tailscale status --json"
 lib/audio.js         conversa com o audiocap.exe
 lib/updater.js       atualização automática (GitHub Releases)
+lib/games.js         detecção de "jogando agora" (opcional)
 renderer/            interface (HTML/CSS/JS) e WebRTC
 native/audiocap.cpp  helper C++ de áudio por processo (Process Loopback do Windows)
 native/audiocap.exe  já compilado. Recompile só se mexer no .cpp

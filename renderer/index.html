@@ -13,6 +13,7 @@
     <div class="top-actions">
       <button id="btnUpdate" class="btn update hidden" title="Instala a nova versão e abre o Telinha de novo">Atualizar</button>
       <button id="btnStream" class="btn primary"><span class="rec"></span>Transmitir</button>
+      <button id="btnChat" class="btn ghost" title="Mostrar/esconder o chat">💬 Chat<span id="chatBadge" class="badge hidden"></span></button>
       <button id="btnSettings" class="btn ghost icon" title="Configurações">⚙</button>
     </div>
   </header>
@@ -28,6 +29,8 @@
     </aside>
 
     <main class="main">
+      <section id="requests" class="requests"></section>
+
       <section id="myLive" class="my-live hidden">
         <video id="myPreview" muted autoplay playsinline></video>
         <div class="my-live-body">
@@ -57,6 +60,15 @@
 
       <section id="watchArea" class="watch-area"></section>
     </main>
+
+    <aside id="chat" class="chat">
+      <div id="chatTabs" class="chat-tabs"></div>
+      <div id="chatLog" class="chat-log"></div>
+      <form id="chatForm" class="chat-form" autocomplete="off">
+        <input id="chatInput" maxlength="1000" placeholder="Mensagem para a sala" />
+        <button class="btn primary small" type="submit">Enviar</button>
+      </form>
+    </aside>
   </div>
 
   <!-- Seletor de transmissão -->
@@ -147,6 +159,18 @@
           </select>
           <span class="muted small">O host só repassa as mensagens de conexão. O vídeo vai direto entre os PCs.</span>
         </label>
+        <fieldset class="games">
+          <legend>Jogos</legend>
+          <label class="check"><input type="checkbox" id="sGameDetect" /> Mostrar para a sala quando eu estiver jogando</label>
+          <label class="check"><input type="checkbox" id="sGameRequests" /> Deixar pedirem para eu transmitir enquanto jogo</label>
+          <span class="muted small">Desligado, nada é verificado. Ligado, só o nome do jogo aparece para a sala (nunca títulos de janela ou outros programas). Um pedido só abre a escolha de tela: nada é transmitido sem você confirmar.</span>
+          <div id="gameNow" class="muted small"></div>
+          <label>Meus jogos (opcional, um por linha)
+            <textarea id="sGameList" rows="2" placeholder="eldenring.exe = Elden Ring"></textarea>
+            <span class="muted small">Além da lista de jogos do Discord e das pastas da Steam, Epic, GOG, Xbox, Riot, EA e Ubisoft.</span></label>
+          <label>Nunca mostrar (um .exe por linha)
+            <textarea id="sGameIgnore" rows="2" placeholder="exemplo.exe"></textarea></label>
+        </fieldset>
         <label>IPs extras (opcional, um por linha)
           <textarea id="sExtra" rows="2" placeholder="Ex.: 192.168.0.20 para testar na rede local sem Tailscale"></textarea></label>
         <label>Caminho do tailscale.exe (opcional)

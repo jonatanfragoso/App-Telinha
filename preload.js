@@ -27,6 +27,11 @@ contextBridge.exposeInMainWorld('telinha', {
   onSignal: on('mesh:signal'),
   onLog: on('log'),
 
+  currentGame: () => ipcRenderer.invoke('games:current'),
+  onGame: on('games:current'),
+  attention: () => ipcRenderer.send('win:attention'),
+  focusWindow: () => ipcRenderer.send('win:focus'),
+
   updateCheck: () => ipcRenderer.invoke('update:check'),
   updateStatus: () => ipcRenderer.invoke('update:status'),
   updateInstall: () => ipcRenderer.send('update:install'),

@@ -13,6 +13,8 @@ Interface e mensagens ao usuário: **português do Brasil**.
 - **Host = só sinalização.** Todo app roda HTTP `/info` + WebSocket `/ws` na porta **47800**, escutando no IP do Tailscale. O app descobre os peers com `tailscale status --json`, consulta o `/info` de cada um e elege um host de forma determinística: maior `priority` (+`boost`), depois quem abriu antes (`startedAt`), depois o `id`. O host repassa offer/answer/ICE; a mídia **não** passa por ele. Failover automático: se o host cai, os clientes reelegem e as conexões de mídia continuam. "Tornar host" manda `promote` (boost=1000). Prioridade nas configurações: 10 = host fixo, 0 = normal, −10 = evitar.
 - **Salas:** a mesma tailnet pode ter grupos separados pelo nome da sala (`room`). Não há login; o nome é só um apelido; o `id` é um UUID novo a cada execução.
 - **Sem STUN/TURN:** `iceServers: []`; os candidatos host do adaptador do Tailscale bastam. A flag `--disable-features=WebRtcHideLocalIpsWithMdns` é **obrigatória**, porque sem ela quem só assiste anuncia `.local` (mDNS) e não conecta.
+- **Chat:** sala (`# Sala`) + conversas privadas. Mensagem `{type:'chat', scope:'room'|'dm', text, name}` pelo relay do host (para a sala, uma cópia para cada membro). Só em memória, nada é salvo.
+- **"Jogando agora" + pedir transmissão:** opt-in (`gameDetect`, desligado por padrão). `lib/games.js` lista processos a cada 15 s via PowerShell (`Get-Process`, caminho + se tem janela) e decide: lista do usuário (`gameList`, "exe = Nome") > lista pública do Discord (`/api/v9/applications/detectable`, baixada e reduzida para `userData/games-db.json`, renovada a cada 7 dias; nomes genéricos como `game.exe` sem pasta são ignorados) > pastas de lojas (steamapps\common, Epic, GOG, Xbox, Riot, EA, Ubisoft; precisa ter janela). `gameIgnore` = nunca mostrar. Para a sala vai só `self.playing = {name, requests}`. Pedido = `askstream` → cartão Aceitar/Recusar (+ notificação do Windows e taskbar piscando); aceitar **só abre o seletor de tela**. Limites: 1 pedido por pessoa a cada 10 min, 30 min após recusa, expira em 2 min. Quem pediu entra sozinho se a transmissão começar em até 5 min. Teste sem jogo: `TELINHA_FAKE_GAME="Nome"`.
 - **Auto-update:** `electron-updater` + GitHub Releases. Funciona só na versão instalada (NSIS, por usuário, sem admin). Verifica ao abrir e a cada 2 h, baixa em segundo plano e mostra o botão verde "Atualizar para x.y.z"; se o usuário não clicar, instala ao fechar.
 
 ## Estrutura
@@ -24,8 +26,9 @@ lib/mesh.js          descoberta, eleição de host, servidor de sinalização
 lib/tailscale.js     wrapper de `tailscale status --json`
 lib/audio.js         spawn do audiocap.exe e repasse do PCM
 lib/updater.js       electron-updater
+lib/games.js         detecção de jogo (opt-in) e lista do Discord
 renderer/index.html  UI (sem framework)
-renderer/app.js      WebRTC, seletor de fontes, tiles, estatísticas, configurações
+renderer/app.js      WebRTC, seletor de fontes, tiles, estatísticas, chat, pedidos, configurações
 renderer/style.css   tema escuro, acento #ff5a3c
 renderer/pcm-worklet.js  ring buffer PCM -> áudio
 native/audiocap.cpp  helper de áudio (comandos: sessions | hwnd <h> | find <exe> | capture include|exclude <pid>)
@@ -58,4 +61,5 @@ Link de download para amigos novos: https://github.com/jonatanfragoso/App-Telinh
 - v0.1.2 publicada com o auto-update testado e funcionando.
 - **Ainda não validado em uso real:** captura de áudio por processo no Windows, 1080p60 entre PCs diferentes pelo Tailscale e failover com transmissão em andamento. A eleição de host foi testada com 3 instâncias simuladas (127.0.0.1/2/3).
 - O teste automatizado de tela usa as variáveis `TELINHA_SHOT` / `TELINHA_JS` em `main.js` (captura um PNG e fecha o app).
+- **Não testado em Windows ainda:** chat, detecção de jogo (PowerShell) e pedidos de transmissão. A regra de detecção foi testada no Node com a lista real do Discord e caminhos simulados.
 - Ideias futuras: SFU no host para quem tem upload fraco, lista de quem está assistindo para os espectadores, atalho de tela cheia, notificação quando alguém entra ao vivo.

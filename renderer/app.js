@@ -108,6 +108,9 @@ T.onSignal(async (m) => {
       case 'ice': return onIce(m);
       case 'ended': return onEnded(m.from);
       case 'nostream': return setTileOverlay(m.from, 'Essa pessoa não está mais transmitindo.');
+      case 'chat': return onChat(m);
+      case 'askstream': return onAskStream(m.from);
+      case 'askreply': return onAskReply(m);
     }
   } catch (e) { log(`sinal ${m.type}: ${e.message}`); }
 });
@@ -592,7 +595,8 @@ async function liveTune() {
 T.onState((s) => {
   const prevIds = new Set(state.members.map((m) => m.id));
   state = s;
-  renderNet(); renderMembers(); renderLive();
+  renderNet(); renderMembers(); renderLive(); renderChat();
+  checkAutoWatch();
   if (!$('#pickModal').classList.contains('hidden')) updateUploadHint();
   // nomes nas tiles podem ter chegado depois
   for (const [id, w] of inPcs) {
@@ -629,17 +633,36 @@ function renderMembers() {
     const li = el('li', 'member');
     const me = m.id === state.selfId;
     const conn = me ? 'você' : m.direct === false ? '<span style="color:var(--warn)">via relay (lento)</span>' : m.direct ? 'conexão direta' : '';
+    const dm = chats.get(m.id);
+    if (dm && dm.unread) li.classList.add('dm-unread');
     li.innerHTML = `
       <span class="avatar" style="background:${colorFor(m.id)}">${esc((m.name || '?')[0].toUpperCase())}</span>
       <div class="meta">
         <div class="nm">${esc(m.name)}${m.isHost ? '<span class="crown" title="Host">♛</span>' : ''}${m.streaming ? '<span class="tag-live">AO VIVO</span>' : ''}</div>
+        ${m.playing ? `<div class="game" title="${esc(m.playing.name)}">🎮 ${esc(m.playing.name)}</div>` : ''}
         <div class="sub">${conn}</div>
-      </div>`;
+      </div>
+      <div class="acts"></div>`;
+    const acts = li.querySelector('.acts');
+    if (!me) {
+      const b = el('button', 'btn ghost small', '💬');
+      b.title = `Mensagem privada para ${m.name}`;
+      b.onclick = () => openChat(m.id);
+      acts.append(b);
+    }
     if (!m.isHost) {
-      const b = el('button', 'btn ghost small act', 'Tornar host');
-      b.title = 'Passar o papel de host para esta pessoa';
+      const b = el('button', 'btn ghost small', '♛');
+      b.title = 'Tornar host (passa o papel de host para esta pessoa)';
       b.onclick = () => { T.promote(m.id); toast(`Pedindo para ${m.name} virar host…`); };
-      li.append(b);
+      acts.append(b);
+    }
+    if (!me && m.playing && m.playing.requests && !m.streaming) {
+      const wait = askCooldown.get(m.id) > Date.now();
+      const b = el('button', 'btn small ask', wait ? 'Pedido enviado' : 'Pedir transmissão');
+      b.disabled = wait;
+      b.title = wait ? 'Dá pra pedir de novo daqui a alguns minutos' : `Pedir para ${m.name} transmitir o jogo`;
+      b.onclick = () => askStream(m.id);
+      li.querySelector('.meta').append(b);
     }
     ul.append(li);
   }
@@ -670,6 +693,188 @@ function renderLive() {
   }
 }
 
+// ---------------------------------------------------------------- chat
+// Mensagens só na memória: fechou o app, sumiram. Vão pelo host (como a sinalização), dentro do Tailscale.
+const chats = new Map(); // 'room' | memberId -> { name, msgs: [{ from, name, text, ts, sys }], unread }
+chats.set('room', { name: 'Sala', msgs: [], unread: 0 });
+let activeChat = 'room';
+let chatOpen = true;
+try { chatOpen = localStorage.getItem('telinha.chatOpen') !== '0'; } catch {}
+
+function chatFor(key, name) {
+  if (!chats.has(key)) chats.set(key, { name: name || memberName(key), msgs: [], unread: 0 });
+  return chats.get(key);
+}
+function pushMsg(key, msg) {
+  const c = chatFor(key, msg.dmName);
+  c.msgs.push(msg);
+  if (c.msgs.length > 300) c.msgs.shift();
+  const seen = chatOpen && activeChat === key && document.hasFocus();
+  if (!seen && !msg.mine && !msg.sys) c.unread++;
+}
+
+function onChat(m) {
+  const text = String(m.text || '').slice(0, 1000).trim();
+  if (!text) return;
+  const name = state.members.some((x) => x.id === m.from) ? memberName(m.from) : String(m.name || 'alguém').slice(0, 32);
+  const key = m.scope === 'dm' ? m.from : 'room';
+  pushMsg(key, { from: m.from, name, text, ts: Date.now(), dmName: name });
+  if (key !== 'room') T.attention();
+  renderChat(); renderMembers();
+}
+
+function sendChat(text) {
+  text = text.trim().slice(0, 1000);
+  if (!text) return;
+  const others = state.members.filter((x) => x.id !== state.selfId);
+  if (activeChat === 'room') {
+    if (!others.length) return toast('Não tem mais ninguém na sala agora.');
+    for (const o of others) T.send(o.id, { type: 'chat', scope: 'room', text, name: settings.name });
+  } else {
+    if (!others.some((o) => o.id === activeChat)) return toast('Essa pessoa não está mais na sala.');
+    T.send(activeChat, { type: 'chat', scope: 'dm', text, name: settings.name });
+  }
+  pushMsg(activeChat, { from: state.selfId, name: settings.name, text, ts: Date.now(), mine: true });
+  renderChat();
+}
+
+function openChat(key) {
+  chatFor(key);
+  activeChat = key;
+  setChatOpen(true);
+  $('#chatInput').focus();
+}
+function setChatOpen(v) {
+  chatOpen = v;
+  try { localStorage.setItem('telinha.chatOpen', v ? '1' : '0'); } catch {}
+  renderChat();
+}
+
+const linkify = (t) => esc(t).replace(/\bhttps?:\/\/[^\s<]+/g, (u) => `<a href="${u}" target="_blank">${u}</a>`);
+
+function renderChat() {
+  $('#chat').classList.toggle('hidden', !chatOpen);
+  if (chatOpen && document.hasFocus()) chatFor(activeChat).unread = 0;
+  const total = [...chats.values()].reduce((n, c) => n + c.unread, 0);
+  $('#chatBadge').textContent = total;
+  $('#chatBadge').classList.toggle('hidden', !total);
+  if (!chatOpen) return;
+
+  const tabs = $('#chatTabs'); tabs.innerHTML = '';
+  for (const [key, c] of chats) {
+    const present = key === 'room' || state.members.some((x) => x.id === key);
+    if (key !== 'room' && present) c.name = memberName(key);
+    const t = el('button', 'chat-tab' + (key === activeChat ? ' active' : ''));
+    t.innerHTML = `<span class="n">${key === 'room' ? '# Sala' : '@ ' + esc(c.name)}${present ? '' : ' (saiu)'}</span>${c.unread ? `<span class="badge">${c.unread}</span>` : ''}${key !== 'room' ? '<span class="x" title="Fechar conversa">✕</span>' : ''}`;
+    t.onclick = (e) => {
+      if (e.target.classList.contains('x')) {
+        chats.delete(key);
+        if (activeChat === key) activeChat = 'room';
+      } else activeChat = key;
+      renderChat(); renderMembers();
+    };
+    tabs.append(t);
+  }
+
+  const c = chatFor(activeChat);
+  const present = activeChat === 'room' || state.members.some((x) => x.id === activeChat);
+  $('#chatInput').disabled = !present;
+  $('#chatInput').placeholder = activeChat === 'room' ? 'Mensagem para a sala' : present ? `Mensagem para ${c.name}` : 'Essa pessoa saiu da sala';
+  // só redesenha o histórico se mudou (o estado da sala chega a cada poucos segundos)
+  const sig = `${activeChat}|${c.msgs.length}|${c.msgs.length && c.msgs[c.msgs.length - 1].ts}`;
+  if (sig === renderChat.sig) return;
+  renderChat.sig = sig;
+  const log = $('#chatLog');
+  const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+  log.innerHTML = '';
+  if (!c.msgs.length) log.innerHTML = `<div class="chat-empty">${activeChat === 'room' ? 'Ninguém falou nada ainda.<br>As mensagens não ficam salvas.' : `Conversa privada com ${esc(c.name)}.<br>Só vocês dois veem.`}</div>`;
+  for (const m of c.msgs) {
+    const d = el('div', 'msg' + (m.sys ? ' sys' : ''));
+    d.innerHTML = m.sys ? esc(m.text)
+      : `<span class="who" style="color:${m.mine ? 'var(--accent-2)' : colorFor(m.from)}">${esc(m.name)}</span><span class="when">${new Date(m.ts).toLocaleTimeString().slice(0, 5)}</span><div class="body">${linkify(m.text)}</div>`;
+    log.append(d);
+  }
+  if (atBottom || (c.msgs.length && c.msgs[c.msgs.length - 1].mine)) log.scrollTop = log.scrollHeight;
+}
+
+// ---------------------------------------------------------------- pedidos de transmissão
+// Só dá pra pedir para quem marcou "jogando" e aceita pedidos. Aceitar só abre o seletor de tela.
+const ASK_COOLDOWN = 10 * 60 * 1000;
+const REFUSE_BLOCK = 30 * 60 * 1000;
+const ASK_EXPIRE = 2 * 60 * 1000;
+const askCooldown = new Map(); // (quem pede) memberId -> pode pedir de novo a partir de
+const autoWatch = new Map(); // (quem pede) memberId -> assistir sozinho se começar até
+const askBlock = new Map(); // (quem recebe) nome|id -> bloqueado até
+const pendingAsks = new Map(); // (quem recebe) memberId -> { card, timer }
+let myGame = null;
+
+function askStream(id) {
+  T.send(id, { type: 'askstream' });
+  askCooldown.set(id, Date.now() + ASK_COOLDOWN);
+  setTimeout(renderMembers, ASK_COOLDOWN + 500);
+  toast(`Pedido enviado para ${memberName(id)}.`);
+  renderMembers();
+}
+
+function onAskReply(m) {
+  if (m.ok) {
+    autoWatch.set(m.from, Date.now() + 5 * 60 * 1000);
+    toast(`${memberName(m.from)} aceitou e vai escolher o que transmitir. Você entra sozinho quando começar.`, 6000);
+  } else toast(`${memberName(m.from)}: ${String(m.reason || 'pedido recusado').slice(0, 120)}`, 5000);
+}
+
+function checkAutoWatch() {
+  for (const [id, until] of autoWatch) {
+    if (until < Date.now()) { autoWatch.delete(id); continue; }
+    const m = state.members.find((x) => x.id === id);
+    if (m && m.streaming && !inPcs.has(id)) { autoWatch.delete(id); watch(id); }
+  }
+}
+
+function onAskStream(from) {
+  const reply = (ok, reason) => T.send(from, { type: 'askreply', ok, reason });
+  const name = memberName(from);
+  if (!settings.gameDetect || !settings.gameRequests || !myGame) return reply(false, 'não está aceitando pedidos agora.');
+  if (my) return reply(false, 'já está transmitindo. É só clicar em Assistir.');
+  if (pendingAsks.has(from)) return;
+  const keys = [from, `n:${name}`];
+  if (keys.some((k) => askBlock.get(k) > Date.now())) return reply(false, 'espere um pouco antes de pedir de novo.');
+  keys.forEach((k) => askBlock.set(k, Date.now() + ASK_COOLDOWN));
+
+  const card = el('div', 'req-card');
+  card.innerHTML = `<span class="avatar" style="background:${colorFor(from)}">${esc((name[0] || '?').toUpperCase())}</span>
+    <div class="txt"><b>${esc(name)}</b> pediu pra você transmitir <b>${esc(myGame.name)}</b>.
+    <div class="muted small">Nada é transmitido até você escolher a tela e confirmar. <button class="link" data-a="off">Não aceitar mais pedidos</button></div></div>`;
+  const ok = el('button', 'btn primary small', 'Escolher o que transmitir');
+  const no = el('button', 'btn ghost small', 'Recusar');
+  card.append(ok, no);
+  const done = () => { clearTimeout(p.timer); card.remove(); pendingAsks.delete(from); };
+  const refuse = (reason) => { keys.forEach((k) => askBlock.set(k, Date.now() + REFUSE_BLOCK)); reply(false, reason); done(); };
+  const p = { card, timer: setTimeout(() => refuse('não respondeu ao pedido.'), ASK_EXPIRE) };
+  ok.onclick = () => { reply(true); done(); openPicker(); };
+  no.onclick = () => refuse('recusou o pedido.');
+  card.querySelector('[data-a=off]').onclick = async () => {
+    settings = await T.setSettings({ gameRequests: false });
+    for (const [id, x] of [...pendingAsks]) { clearTimeout(x.timer); x.card.remove(); pendingAsks.delete(id); T.send(id, { type: 'askreply', ok: false, reason: 'não está aceitando pedidos agora.' }); }
+    toast('Pedidos desligados. Dá pra ligar de novo em ⚙.');
+  };
+  pendingAsks.set(from, p);
+  $('#requests').append(card);
+  T.attention();
+  if (!document.hasFocus()) {
+    try {
+      const n = new Notification('Telinha', { body: `${name} pediu pra você transmitir ${myGame.name}.`, silent: false });
+      n.onclick = () => T.focusWindow();
+    } catch {}
+  }
+}
+
+function renderGameNow() {
+  const box = $('#gameNow'); if (!box) return;
+  if (!settings.gameDetect) { box.textContent = ''; return; }
+  box.textContent = myGame ? `Detectado agora: ${myGame.name} (${myGame.exe}, pela ${myGame.source})` : 'Nenhum jogo detectado agora.';
+}
+
 // ---------------------------------------------------------------- configurações
 async function openSettings() {
   $('#sName').value = settings.name || '';
@@ -678,6 +883,11 @@ async function openSettings() {
   $('#sPriority').value = pr >= 10 ? '10' : pr <= -10 ? '-10' : '0';
   $('#sExtra').value = (settings.extraPeers || []).join('\n');
   $('#sTsPath').value = settings.tailscalePath || '';
+  $('#sGameDetect').checked = !!settings.gameDetect;
+  $('#sGameRequests').checked = settings.gameRequests !== false;
+  $('#sGameList').value = (settings.gameList || []).join('\n');
+  $('#sGameIgnore').value = (settings.gameIgnore || []).join('\n');
+  renderGameNow();
   $('#logBox').textContent = logs.join('\n');
   $('#setModal').classList.remove('hidden');
 }
@@ -688,6 +898,10 @@ async function saveSettings() {
     priority: Number($('#sPriority').value),
     extraPeers: $('#sExtra').value.split(/\s+/).map((x) => x.trim()).filter(Boolean),
     tailscalePath: $('#sTsPath').value.trim(),
+    gameDetect: $('#sGameDetect').checked,
+    gameRequests: $('#sGameRequests').checked,
+    gameList: $('#sGameList').value.split('\n').map((x) => x.trim()).filter(Boolean),
+    gameIgnore: $('#sGameIgnore').value.split(/[\n,]/).map((x) => x.trim()).filter(Boolean),
   };
   settings = await T.setSettings(patch);
   $('#setModal').classList.add('hidden');
@@ -707,6 +921,10 @@ $('#btnGoLive').onclick = goLive;
 $('#btnStop').onclick = stopLive;
 $('#btnSettings').onclick = openSettings;
 $('#btnSaveSettings').onclick = saveSettings;
+$('#btnChat').onclick = () => setChatOpen(!chatOpen);
+$('#chatForm').onsubmit = (e) => { e.preventDefault(); sendChat($('#chatInput').value); $('#chatInput').value = ''; };
+window.addEventListener('focus', () => { renderChat(); renderMembers(); });
+T.onGame((g) => { myGame = g; renderGameNow(); });
 fillQualitySelects();
 loadQuality();
 $('#qPreset').onchange = applyPreset;
@@ -742,7 +960,8 @@ $('#btnUpdate').onclick = () => {
 (async () => {
   renderUpdate(await T.updateStatus());
   settings = await T.getSettings();
+  myGame = await T.currentGame();
   const p = await T.platform();
   $('#appVersion').textContent = `Telinha ${p.version}`;
-  renderNet(); renderMembers(); renderLive();
+  renderNet(); renderMembers(); renderLive(); renderChat();
 })();

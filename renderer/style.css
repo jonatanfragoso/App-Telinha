@@ -73,8 +73,6 @@ h3 { margin: 0; font-size: 16px; }
 .member .sub { font-size: 11px; color: var(--muted); }
 .crown { color: var(--warn); font-size: 12px; }
 .tag-live { font-size: 10px; font-weight: 700; color: #fff; background: var(--accent); padding: 1px 6px; border-radius: 4px; }
-.member .act { opacity: 0; }
-.member:hover .act { opacity: 1; }
 .side-hint { margin-top: 16px; font-size: 12px; color: var(--muted); line-height: 1.5; }
 .side-hint code { background: var(--panel-2); padding: 1px 5px; border-radius: 4px; }
 
@@ -166,3 +164,43 @@ details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
 }
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: #2a303c; border-radius: 10px; border: 2px solid var(--bg); }
+
+/* ---- membros: ações e jogo ---- */
+.member .game { font-size: 11px; color: var(--ok); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.member .acts { display: flex; gap: 2px; opacity: 0; }
+.member:hover .acts { opacity: 1; }
+.member .acts .btn { padding: 3px 7px; }
+.member .ask { margin-top: 4px; }
+.member.dm-unread .nm::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none; }
+
+/* ---- pedidos de transmissão ---- */
+.requests { display: flex; flex-direction: column; gap: 8px; }
+.requests:empty { display: none; }
+.req-card { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--panel); border: 1px solid var(--accent); border-radius: var(--radius); }
+.req-card .txt { flex: 1; min-width: 0; }
+.req-card .link { background: none; border: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline; padding: 0; }
+
+/* ---- chat ---- */
+.badge { background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; border-radius: 99px; padding: 0 6px; min-width: 18px; text-align: center; }
+.chat { width: 300px; flex: none; border-left: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+.chat-tabs { display: flex; gap: 4px; padding: 10px 10px 0; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.chat-tab { background: transparent; border: 1px solid transparent; color: var(--muted); padding: 3px 8px; border-radius: 6px; cursor: pointer; font: inherit; font-size: 12px; display: inline-flex; align-items: center; gap: 5px; max-width: 140px; }
+.chat-tab span.n { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-tab.active { background: var(--panel-2); color: var(--text); border-color: var(--line); }
+.chat-tab .x { opacity: .5; }
+.chat-tab .x:hover { opacity: 1; color: var(--bad); }
+.chat-log { flex: 1; overflow-y: auto; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; user-select: text; }
+.chat-empty { color: var(--muted); font-size: 12px; text-align: center; margin-top: 20px; }
+.msg { font-size: 13px; line-height: 1.4; word-wrap: break-word; overflow-wrap: anywhere; }
+.msg .who { font-weight: 600; font-size: 12px; }
+.msg .when { color: var(--muted); font-size: 10px; margin-left: 6px; }
+.msg .body { white-space: pre-wrap; }
+.msg .body a { color: var(--accent-2); }
+.msg.sys { color: var(--muted); font-size: 12px; font-style: italic; }
+.chat-form { display: flex; gap: 6px; padding: 10px; border-top: 1px solid var(--line); }
+.chat-form input { flex: 1; min-width: 0; }
+
+/* ---- configurações: jogos ---- */
+fieldset.games { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; margin: 0; }
+fieldset.games legend { font-size: 13px; padding: 0 4px; }
+.form label.check { flex-direction: row; align-items: center; gap: 8px; }
