@@ -2,6 +2,7 @@
 const T = window.telinha;
 let fwOk = null; // regra do firewall existe? null = não se aplica (rodando pelo código)
 let tsNets = []; // redes do Tailscale em que este PC já entrou
+let tsLoginBusy = false; // esperando o login do Tailscale no navegador
 const $ = (s) => document.querySelector(s);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -774,7 +775,9 @@ function cleanMember(m) {
 T.onState((s) => {
   const prevIds = new Set(state.members.map((m) => m.id));
   s.members = (Array.isArray(s.members) ? s.members : []).filter((m) => m && typeof m.id === 'string').map(cleanMember);
+  const prevNet = state.tailscale && state.tailscale.tailnet;
   state = s;
+  if (s.tailscale && s.tailscale.tailnet && prevNet && s.tailscale.tailnet !== prevNet) loadNetworks(); // trocou de rede por fora
   renderNet(); renderMembers(); renderLive(); renderChat();
   checkAutoWatch(); askAvatars(); refreshTileAvatars(); roomSounds();
   if (!$('#pickModal').classList.contains('hidden')) updateUploadHint();
@@ -851,9 +854,14 @@ function renderMembers() {
     hint.innerHTML = 'Instale e entre no <b>Tailscale</b> com a mesma rede dos seus amigos. Depois é só deixar o Telinha aberto.';
   } else if (state.members.length <= 1) {
     const net = state.tailscale.tailnet;
-    hint.innerHTML = `Ninguém mais por aqui. Seus amigos precisam estar na mesma tailnet, com o Telinha aberto e na sala <code>${esc(settings.room)}</code>.`
-      + (net && tsNets.length > 1 ? `<br>Você está na rede <b>${esc(net)}</b>. <a href="#" class="ts-switch">Trocar de rede</a>` : '')
-      + (fwOk === false ? '<br><button class="btn small fw-fix">Liberar no firewall</button>' : '');
+    const others = tsNets.filter((n) => !n.active).slice(0, 3);
+    hint.innerHTML = `Ninguém mais por aqui. Seus amigos precisam estar na mesma rede do Tailscale, com o Telinha aberto e na sala <code>${esc(settings.room)}</code>.`
+      + (net ? `<div class="hint-net">Você está na rede <b>${esc(net)}</b>.</div>` : '')
+      + '<div class="hint-actions">'
+      + others.map((n) => `<button class="btn small ts-go" data-id="${esc(n.id)}">Ir para a rede ${esc(n.tailnet)}</button>`).join('')
+      + (tsNets.length ? `<button class="btn ghost small ts-login"${tsLoginBusy ? ' disabled' : ''}>${tsLoginBusy ? 'Esperando o login…' : 'Entrar em outra rede…'}</button>` : '')
+      + (fwOk === false ? '<button class="btn small fw-fix">Liberar no firewall</button>' : '')
+      + '</div>';
   } else hint.innerHTML = '';
 }
 
@@ -1337,7 +1345,9 @@ async function fixFirewall() {
 $('#btnFwFix').onclick = fixFirewall;
 $('#sideHint').addEventListener('click', (e) => {
   if (e.target.closest('.fw-fix')) fixFirewall();
-  if (e.target.closest('.ts-switch')) { e.preventDefault(); openSettings(); }
+  const go = e.target.closest('.ts-go');
+  if (go) switchNet(go.dataset.id);
+  if (e.target.closest('.ts-login')) loginNet();
 });
 
 // ---------- rede do Tailscale (tailscale switch) ----------
@@ -1356,28 +1366,31 @@ async function loadNetworks() {
   $('#tsRow').classList.toggle('hidden', !tsNets.length);
   renderMembers();
 }
-$('#sTailnet').onchange = async () => {
-  const n = tsNets.find((x) => x.id === $('#sTailnet').value);
-  if (!n) return;
+async function switchNet(id) {
+  const n = tsNets.find((x) => x.id === id);
+  if (!n || n.active) return;
   if (my && !confirm('Você está transmitindo. Trocar de rede encerra a transmissão. Continuar?')) return loadNetworks();
   if (my) stopLive();
   toast(`Trocando para a rede ${n.tailnet}…`);
   const r = await T.tsSwitch(n.id);
   if (!r.ok) toast(`Não deu para trocar: ${r.message}`);
   await loadNetworks();
-};
-$('#btnTsLogin').onclick = async () => {
+}
+async function loginNet() {
+  if (tsLoginBusy) return;
   if (my && !confirm('Você está transmitindo. Entrar em outra rede encerra a transmissão. Continuar?')) return;
   if (my) stopLive();
   const b = $('#btnTsLogin');
-  b.disabled = true; b.textContent = 'Esperando o login…';
+  tsLoginBusy = true; b.disabled = true; b.textContent = 'Esperando o login…'; renderMembers();
   toast('Abrindo o login do Tailscale no navegador. Entre com a sua conta e escolha a rede do grupo.', 8000);
   const r = await T.tsLogin();
-  b.disabled = false; b.textContent = 'Entrar em outra rede…';
+  tsLoginBusy = false; b.disabled = false; b.textContent = 'Entrar em outra rede…';
   await loadNetworks();
   const cur = tsNets.find((n) => n.active);
   toast(r.ok ? `Pronto: você está na rede ${cur ? cur.tailnet : 'nova'}` : r.message, 6000);
-};
+}
+$('#sTailnet').onchange = () => switchNet($('#sTailnet').value);
+$('#btnTsLogin').onclick = loginNet;
 $('#btnSaveSettings').onclick = saveSettings;
 $('#btnChat').onclick = () => setChatOpen(!chatOpen);
 $('#btnAvPhoto').onclick = () => $('#avFile').click();
