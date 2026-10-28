@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Telinha — política de assinatura e privacidade</title>
+  <meta name="description" content="Política de assinatura de código (code signing policy) e política de privacidade do Telinha." />
+  <style>
+    :root {
+      --bg: #0f1115; --panel: #161920; --panel-2: #1d212a; --line: #262b36;
+      --text: #e8eaf0; --muted: #8b92a3; --accent: #ff5a3c; --accent-2: #ff7a5c;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif; }
+    a { color: var(--accent-2); }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 0 16px; }
+    header.top { border-bottom: 1px solid var(--line); background: var(--panel); }
+    header.top .wrap { display: flex; align-items: center; gap: 16px; height: 56px; }
+    .brand { font-weight: 700; display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .logo { width: 22px; height: 16px; border-radius: 4px; border: 2px solid var(--accent); position: relative; display: inline-block; }
+    .logo::after { content: ""; position: absolute; left: 50%; bottom: -6px; width: 10px; height: 2px; background: var(--accent); transform: translateX(-50%); border-radius: 2px; }
+    .lang { margin-left: auto; font-size: 14px; display: flex; gap: 14px; }
+    .lang a { color: var(--muted); text-decoration: none; }
+    .lang a:hover { color: var(--text); }
+    h1 { font-size: clamp(26px, 5vw, 34px); line-height: 1.2; margin: 40px 0 8px; }
+    h2 { font-size: 21px; margin: 32px 0 8px; padding-top: 8px; }
+    h3 { font-size: 17px; margin: 20px 0 6px; }
+    p, li { color: #cfd3dc; }
+    li { margin: 6px 0; }
+    .muted { color: var(--muted); }
+    .box { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 8px; padding: 12px 16px; margin: 14px 0; }
+    .box p { margin: 4px 0; }
+    .table-scroll { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-size: 15px; margin: 10px 0; }
+    th, td { border-bottom: 1px solid var(--line); padding: 8px 6px; text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; }
+    code { background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; font-size: .9em; }
+    hr { border: none; border-top: 1px solid var(--line); margin: 48px 0 0; }
+    footer { border-top: 1px solid var(--line); margin-top: 48px; padding: 28px 0 40px; color: var(--muted); font-size: 14px; text-align: center; }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <a class="brand" href="./"><span class="logo"></span>Telinha</a>
+      <nav class="lang"><a href="#pt">Português</a><a href="#en">English</a></nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- ============================================================ PORTUGUÊS -->
+    <section id="pt" lang="pt-BR">
+      <h1>Política de assinatura e privacidade</h1>
+      <p class="muted">Última atualização: 28 de outubro de 2026</p>
+
+      <h2>Assinatura de código</h2>
+      <div class="box">
+        <p>Assinatura de código gratuita fornecida pela <a href="https://about.signpath.io" target="_blank" rel="noopener">SignPath.io</a>, com certificado da <a href="https://signpath.org" target="_blank" rel="noopener">SignPath Foundation</a>.</p>
+        <p class="muted">Situação atual: inscrição em andamento. Até a primeira versão assinada, os instaladores do Telinha não têm assinatura digital.</p>
+      </div>
+      <p>Só são assinados os arquivos produzidos a partir do <a href="https://github.com/jonatanfragoso/App-Telinha" target="_blank" rel="noopener">código-fonte público do Telinha</a>, compilados automaticamente pelo GitHub Actions a partir de uma tag de versão. Nenhum arquivo compilado em computador pessoal é assinado.</p>
+
+      <h3>Papéis no projeto</h3>
+      <div class="table-scroll">
+        <table>
+          <tr><th>Papel</th><th>Quem</th><th>O que faz</th></tr>
+          <tr><td>Autor e revisor (committer / reviewer)</td><td><a href="https://github.com/jonatanfragoso" target="_blank" rel="noopener">Jonatan Fragoso</a></td><td>Escreve e revisa todo o código que entra no repositório.</td></tr>
+          <tr><td>Aprovador (approver)</td><td><a href="https://github.com/jonatanfragoso" target="_blank" rel="noopener">Jonatan Fragoso</a></td><td>Aprova manualmente cada pedido de assinatura de uma versão.</td></tr>
+        </table>
+      </div>
+      <p>Contribuições de outras pessoas só entram depois de revisadas pelo autor. As contas usadas no GitHub e na SignPath têm autenticação em dois fatores.</p>
+
+      <h2>Privacidade</h2>
+      <p>O Telinha não tem servidor próprio, não exige conta e não coleta estatísticas de uso (telemetria). Ele só se comunica pela rede nos casos abaixo:</p>
+      <div class="table-scroll">
+        <table>
+          <tr><th>Com quem</th><th>Quando</th><th>O que é enviado</th></tr>
+          <tr><td>Outros PCs com o Telinha na sua rede do Tailscale</td><td>Enquanto o app está aberto</td><td>Seu apelido, sala, se está transmitindo e, se você ligar a opção, o nome do jogo que está jogando. Também a tela, o áudio e as mensagens de chat que <b>você</b> decidir enviar. Tela e áudio vão direto de PC para PC; chat e sinais de conexão passam pelo PC do host, que também é um dos PCs da sala. Nada sai da rede criptografada do Tailscale.</td></tr>
+          <tr><td>GitHub (github.com)</td><td>Ao abrir o app e a cada 2 horas</td><td>Uma consulta para saber se existe versão nova e, se existir, o download dela. O GitHub vê o seu endereço IP, como em qualquer download.</td></tr>
+          <tr><td>Discord (discord.com)</td><td>Só se você ligar "Mostrar quando estou jogando", no máximo uma vez a cada 7 dias</td><td>O download da lista pública de jogos que o Discord reconhece. Nada sobre você é enviado; o Discord vê o seu endereço IP.</td></tr>
+        </table>
+      </div>
+      <ul>
+        <li>O app consulta o programa do Tailscale no próprio PC (<code>tailscale status</code>) para descobrir os outros PCs da rede.</li>
+        <li>Com a detecção de jogo ligada, a lista de programas abertos é lida a cada 15 segundos e <b>não sai do seu PC</b>. Só o nome do jogo reconhecido é mostrado para a sala.</li>
+        <li>As configurações ficam só no seu PC, em <code>%APPDATA%\Telinha</code>. As mensagens de chat não são gravadas em lugar nenhum.</li>
+        <li>Nada é transmitido sem você escolher a tela e confirmar.</li>
+        <li>Esta página e a página de download consultam a API pública do GitHub para mostrar as versões disponíveis.</li>
+      </ul>
+    </section>
+
+    <hr />
+
+    <!-- ============================================================ ENGLISH -->
+    <section id="en" lang="en">
+      <h1>Code signing policy and privacy</h1>
+      <p class="muted">Last updated: October 28, 2026</p>
+
+      <h2>Code signing policy</h2>
+      <div class="box">
+        <p>Free code signing provided by <a href="https://about.signpath.io" target="_blank" rel="noopener">SignPath.io</a>, certificate by <a href="https://signpath.org" target="_blank" rel="noopener">SignPath Foundation</a>.</p>
+        <p class="muted">Current status: application in progress. Until the first signed release, Telinha installers are not digitally signed.</p>
+      </div>
+      <p>Only files built from Telinha's <a href="https://github.com/jonatanfragoso/App-Telinha" target="_blank" rel="noopener">public source code</a> are signed. They are built automatically by GitHub Actions from a version tag; nothing built on a personal computer is signed.</p>
+
+      <h3>Team roles and their members</h3>
+      <div class="table-scroll">
+        <table>
+          <tr><th>Role</th><th>Member</th><th>Responsibility</th></tr>
+          <tr><td>Committer and reviewer</td><td><a href="https://github.com/jonatanfragoso" target="_blank" rel="noopener">Jonatan Fragoso</a></td><td>Writes and reviews all code merged into the repository.</td></tr>
+          <tr><td>Approver</td><td><a href="https://github.com/jonatanfragoso" target="_blank" rel="noopener">Jonatan Fragoso</a></td><td>Manually approves each signing request for a release.</td></tr>
+        </table>
+      </div>
+      <p>External contributions are merged only after review by the maintainer. The GitHub and SignPath accounts involved use multi-factor authentication.</p>
+
+      <h2>Privacy policy</h2>
+      <p>Telinha has no server of its own, requires no account and collects no usage statistics (telemetry). It only transfers information over the network in the cases below:</p>
+      <div class="table-scroll">
+        <table>
+          <tr><th>With</th><th>When</th><th>What is sent</th></tr>
+          <tr><td>Other computers running Telinha on the user's Tailscale network</td><td>While the app is open</td><td>The user's nickname, room, streaming status and, if the user enables it, the name of the game being played; plus the screen, audio and chat messages the user chooses to send. Screen and audio go directly from computer to computer; chat and connection signaling are relayed by the host, which is also one of the computers in the room. Nothing leaves Tailscale's encrypted network.</td></tr>
+          <tr><td>GitHub (github.com)</td><td>On start and every 2 hours</td><td>A request to check for a new version and, if there is one, its download. GitHub sees the user's IP address, as with any download.</td></tr>
+          <tr><td>Discord (discord.com)</td><td>Only if the user enables "show when I'm playing", at most once every 7 days</td><td>Download of Discord's public list of detectable games. Nothing about the user is sent; Discord sees the user's IP address.</td></tr>
+        </table>
+      </div>
+      <ul>
+        <li>The app queries the local Tailscale client (<code>tailscale status</code>) to find other computers on the network.</li>
+        <li>With game detection enabled, the list of running programs is read every 15 seconds and <b>never leaves the computer</b>. Only the recognized game's name is shown to the room.</li>
+        <li>Settings are stored only on the user's computer, in <code>%APPDATA%\Telinha</code>. Chat messages are not stored anywhere.</li>
+        <li>Nothing is streamed unless the user picks a screen and confirms.</li>
+        <li>This website and the download page query GitHub's public API to list the available versions.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <a href="./">Página do Telinha</a> · <a href="https://github.com/jonatanfragoso/App-Telinha" target="_blank" rel="noopener">GitHub</a>
+    </div>
+  </footer>
+</body>
+</html>
