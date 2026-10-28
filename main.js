@@ -24,7 +24,7 @@ if (process.platform === 'win32') app.setAppUserModelId('br.jonatan.telinha');
 const settingsFile = () => path.join(app.getPath('userData'), 'config.json');
 const DEFAULTS = {
   name: os.hostname(), room: 'geral', priority: 0, extraPeers: [], tailscalePath: '',
-  gameDetect: false, gameRequests: true, gameList: [], gameIgnore: [], avatar: null,
+  gameDetect: false, gameRequests: true, gameList: [], gameIgnore: [], avatar: null, sounds: true,
 };
 let settings = { ...DEFAULTS };
 function loadSettings() {
@@ -137,7 +137,7 @@ function cleanSettings(patch) {
     const p = patch.tailscalePath.trim();
     if (!p || (path.basename(p).toLowerCase() === 'tailscale.exe' && fs.existsSync(p))) out.tailscalePath = p;
   }
-  for (const k of ['gameDetect', 'gameRequests']) if (patch[k] !== undefined) out[k] = !!patch[k];
+  for (const k of ['gameDetect', 'gameRequests', 'sounds']) if (patch[k] !== undefined) out[k] = !!patch[k];
   for (const k of ['gameList', 'gameIgnore']) if (patch[k] !== undefined) out[k] = strList(patch[k], 200);
   if (patch.avatar !== undefined) out.avatar = cleanAvatar(patch.avatar);
   return out;

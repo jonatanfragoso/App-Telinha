@@ -626,7 +626,7 @@ async function goLive() {
   }
 
   const s = vt.getSettings();
-  my = { stream, title: pickSel.name, cfg, audioInfo, size: { w: s.width || w, h: s.height || h } };
+  my = { stream, title: pickSel.name, cfg, audioInfo, audioMode: mode, size: { w: s.width || w, h: s.height || h } };
   $('#pickModal').classList.add('hidden');
   saveQuality();
   $('#liveRes').value = $('#qRes').value;
@@ -743,7 +743,7 @@ T.onState((s) => {
   s.members = (Array.isArray(s.members) ? s.members : []).filter((m) => m && typeof m.id === 'string').map(cleanMember);
   state = s;
   renderNet(); renderMembers(); renderLive(); renderChat();
-  checkAutoWatch(); askAvatars(); refreshTileAvatars();
+  checkAutoWatch(); askAvatars(); refreshTileAvatars(); roomSounds();
   if (!$('#pickModal').classList.contains('hidden')) updateUploadHint();
   // nomes nas tiles podem ter chegado depois
   for (const [id, w] of inPcs) {
@@ -1155,6 +1155,61 @@ function renderGameNow() {
   box.textContent = myGame ? `Detectado agora: ${myGame.name} (${myGame.exe}, pela ${myGame.source})` : 'Nenhum jogo detectado agora.';
 }
 
+// ---------------------------------------------------------------- sons de entrada/saída/ao vivo
+// Gerados na hora (WebAudio), sem arquivos. Quando o host muda, a lista da sala se refaz aos poucos:
+// por isso "entrou" = id nunca visto, e "saiu" só conta com o mesmo host há pelo menos 10 s.
+let sfxCtx = null;
+function tone(notes, type = 'sine') {
+  try {
+    sfxCtx ||= new AudioContext();
+    const t0 = sfxCtx.currentTime + 0.01;
+    notes.forEach(([freq, start, dur]) => {
+      const o = sfxCtx.createOscillator(), g = sfxCtx.createGain();
+      o.type = type; o.frequency.value = freq;
+      g.gain.setValueAtTime(0, t0 + start);
+      g.gain.linearRampToValueAtTime(0.14, t0 + start + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + start + dur);
+      o.connect(g).connect(sfxCtx.destination);
+      o.start(t0 + start); o.stop(t0 + start + dur + 0.05);
+    });
+  } catch {}
+}
+const SFX = {
+  join: () => tone([[660, 0, 0.18], [880, 0.09, 0.25]]),
+  leave: () => tone([[784, 0, 0.18], [523, 0.09, 0.28]]),
+  live: () => tone([[523, 0, 0.2], [659, 0.08, 0.2], [784, 0.16, 0.35]], 'triangle'),
+};
+// transmitindo com "som do sistema, sem o Discord", o som do Telinha iria junto na transmissão
+const sfxMuted = () => settings.sounds === false || (my && my.audioMode === 'nodiscord');
+function sfx(kind, text) {
+  if (!sfxMuted()) SFX[kind]();
+  else if (settings.sounds !== false || kind === 'live') return toast(text);
+  if (kind === 'live') toast(text);
+}
+
+const seen = new Map(); // id -> { name, live }
+let roomReady = false;
+let roomHost = null;
+let hostSince = 0;
+function roomSounds() {
+  if (!state.connected) { roomHost = null; return; }
+  const now = Date.now();
+  const hostId = state.isHost ? state.selfId : state.host && state.host.id;
+  if (hostId !== roomHost) { roomHost = hostId; hostSince = now; }
+  const present = new Set();
+  for (const m of state.members) {
+    if (m.id === state.selfId) continue;
+    present.add(m.id);
+    const before = seen.get(m.id);
+    if (!before && roomReady) sfx('join', `${m.name} entrou.`);
+    if (before && !before.live && m.streaming) sfx('live', `${m.name} começou a transmitir${m.streaming.title ? ': ' + m.streaming.title : ''}.`);
+    seen.set(m.id, { name: m.name, live: !!m.streaming });
+  }
+  roomReady = true;
+  if (now - hostSince < 10000) return;
+  for (const [id, x] of seen) if (!present.has(id)) { sfx('leave', `${x.name} saiu.`); seen.delete(id); }
+}
+
 // ---------------------------------------------------------------- configurações
 let avDraft = null;
 function renderAvatarPick() {
@@ -1185,6 +1240,7 @@ async function openSettings() {
   $('#sPriority').value = pr >= 10 ? '10' : pr <= -10 ? '-10' : '0';
   $('#sExtra').value = (settings.extraPeers || []).join('\n');
   $('#sTsPath').value = settings.tailscalePath || '';
+  $('#sSounds').checked = settings.sounds !== false;
   $('#sGameDetect').checked = !!settings.gameDetect;
   $('#sGameRequests').checked = settings.gameRequests !== false;
   $('#sGameList').value = (settings.gameList || []).join('\n');
@@ -1200,12 +1256,14 @@ async function saveSettings() {
     priority: Number($('#sPriority').value),
     extraPeers: $('#sExtra').value.split(/\s+/).map((x) => x.trim()).filter(Boolean),
     tailscalePath: $('#sTsPath').value.trim(),
+    sounds: $('#sSounds').checked,
     gameDetect: $('#sGameDetect').checked,
     gameRequests: $('#sGameRequests').checked,
     gameList: $('#sGameList').value.split('\n').map((x) => x.trim()).filter(Boolean),
     gameIgnore: $('#sGameIgnore').value.split(/[\n,]/).map((x) => x.trim()).filter(Boolean),
     avatar: avDraft,
   };
+  if (patch.room !== settings.room) { seen.clear(); roomReady = false; } // sala nova: sem som para quem já estava lá
   settings = await T.setSettings(patch);
   $('#setModal').classList.add('hidden');
   renderNet(); renderMembers(); renderChat.sig = null; renderChat();
