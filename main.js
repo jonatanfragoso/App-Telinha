@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, desktopCapturer, shell } = require('electro
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const crypto = require('crypto');
 const { Mesh } = require('./lib/mesh');
 const audio = require('./lib/audio');
 const updater = require('./lib/updater');
@@ -23,11 +24,12 @@ if (process.platform === 'win32') app.setAppUserModelId('br.jonatan.telinha');
 const settingsFile = () => path.join(app.getPath('userData'), 'config.json');
 const DEFAULTS = {
   name: os.hostname(), room: 'geral', priority: 0, extraPeers: [], tailscalePath: '',
-  gameDetect: false, gameRequests: true, gameList: [], gameIgnore: [],
+  gameDetect: false, gameRequests: true, gameList: [], gameIgnore: [], avatar: null,
 };
 let settings = { ...DEFAULTS };
 function loadSettings() {
   try { settings = { ...DEFAULTS, ...JSON.parse(fs.readFileSync(settingsFile(), 'utf8')) }; } catch {}
+  settings.avatar = cleanAvatar(settings.avatar);
   if (settings.tailscalePath && !(path.basename(settings.tailscalePath).toLowerCase() === 'tailscale.exe' && fs.existsSync(settings.tailscalePath))) settings.tailscalePath = '';
 }
 function saveSettings() {
@@ -84,6 +86,7 @@ app.whenReady().then(() => {
   mesh.on('state', (s) => send('mesh:state', s));
   mesh.on('signal', (m) => send('mesh:signal', m));
   mesh.on('log', (l) => send('log', l));
+  mesh.setSelf({ avatar: publicAvatar(settings.avatar) });
   createWindow();
   mesh.start();
   games.init({
@@ -106,6 +109,21 @@ app.on('window-all-closed', () => { audio.stop(); if (mesh) mesh.stop(); app.qui
 
 // ---------- IPC ----------
 ipcMain.handle('settings:get', () => settings);
+// avatar: { kind: 'emoji', emoji, color } ou { kind: 'photo', data (data URL 128x128), hash }
+const PHOTO_RE = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
+function cleanAvatar(a) {
+  if (!a || typeof a !== 'object') return null;
+  if (a.kind === 'emoji' && typeof a.emoji === 'string' && a.emoji.length <= 8) {
+    return { kind: 'emoji', emoji: a.emoji, color: Math.max(0, Math.min(7, Number(a.color) | 0)) };
+  }
+  if (a.kind === 'photo' && typeof a.data === 'string' && a.data.length <= 90000 && PHOTO_RE.test(a.data)) {
+    return { kind: 'photo', data: a.data, hash: crypto.createHash('sha256').update(a.data).digest('hex').slice(0, 16) };
+  }
+  return null;
+}
+// para a sala vai só a referência; a foto é pedida uma vez por quem não tem (pelo relay)
+const publicAvatar = (a) => (!a ? null : a.kind === 'emoji' ? { kind: 'emoji', emoji: a.emoji, color: a.color } : { kind: 'photo', hash: a.hash });
+
 const strList = (v, max) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string').map((x) => x.slice(0, 200)).slice(0, max) : []);
 // Só aceita os campos conhecidos, com o tipo certo. O caminho do Tailscale é executado pelo app,
 // então só vale um arquivo chamado tailscale.exe que exista.
@@ -121,6 +139,7 @@ function cleanSettings(patch) {
   }
   for (const k of ['gameDetect', 'gameRequests']) if (patch[k] !== undefined) out[k] = !!patch[k];
   for (const k of ['gameList', 'gameIgnore']) if (patch[k] !== undefined) out[k] = strList(patch[k], 200);
+  if (patch.avatar !== undefined) out.avatar = cleanAvatar(patch.avatar);
   return out;
 }
 
@@ -130,7 +149,7 @@ ipcMain.handle('settings:set', (_e, raw) => {
   settings = { ...settings, ...patch };
   saveSettings();
   if (roomChanged && mesh) { mesh.isHost = false; mesh.dropHostConn(); }
-  if (mesh) mesh.tick();
+  if (mesh) { mesh.setSelf({ avatar: publicAvatar(settings.avatar) }); mesh.tick(); }
   games.refresh();
   return settings;
 });

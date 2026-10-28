@@ -71,6 +71,8 @@
       <div id="chatTabs" class="chat-tabs"></div>
       <div id="chatLog" class="chat-log"></div>
       <form id="chatForm" class="chat-form" autocomplete="off">
+        <button id="btnChatImg" class="btn ghost small" type="button" title="Enviar imagem (ou cole um print com Ctrl+V)">📎</button>
+        <input id="chatImgFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp" class="hidden" />
         <input id="chatInput" maxlength="1000" placeholder="Mensagem para a sala" />
         <button class="btn primary small" type="submit">Enviar</button>
       </form>
@@ -155,6 +157,22 @@
       </div>
       <div class="form">
         <label>Seu nome<input id="sName" maxlength="32" /></label>
+        <div class="avatar-pick">
+          <div class="avatar-pick-head">
+            <span id="avPreview" class="avatar big"></span>
+            <div>
+              <b>Seu avatar</b>
+              <div class="muted small">Aparece no lugar da letra do seu nome.</div>
+              <div class="av-actions">
+                <button id="btnAvPhoto" class="btn small" type="button">Enviar foto…</button>
+                <button id="btnAvLetter" class="btn ghost small" type="button">Usar a letra</button>
+                <input id="avFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/bmp" class="hidden" />
+              </div>
+            </div>
+          </div>
+          <div id="avEmojis" class="av-emojis"></div>
+          <div id="avColors" class="av-colors"></div>
+        </div>
         <label>Sala<input id="sRoom" maxlength="32" />
           <span class="muted small">Só quem estiver na mesma sala aparece pra você.</span></label>
         <label>Ser host
@@ -195,6 +213,49 @@
         <button class="btn ghost" data-close>Cancelar</button>
         <button id="btnSaveSettings" class="btn primary">Salvar</button>
       </div>
+    </div>
+  </div>
+
+  <!-- Recorte da foto do avatar -->
+  <div id="cropModal" class="modal hidden">
+    <div class="modal-card crop-card">
+      <div class="modal-head">
+        <h3>Ajustar foto</h3>
+        <button class="btn ghost icon" data-close>✕</button>
+      </div>
+      <div class="crop-body">
+        <div id="cropStage" class="crop-stage"><canvas id="cropCanvas"></canvas><div class="crop-mask"></div></div>
+        <label class="crop-zoom"><span>−</span><input type="range" id="cropZoom" min="1" max="4" step="0.01" value="1" /><span>+</span></label>
+        <div class="muted small">Arraste para posicionar. Use a roda do mouse ou a barra para dar zoom.</div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn ghost" data-close>Cancelar</button>
+        <button id="btnCropOk" class="btn primary">Aplicar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enviar imagem no chat -->
+  <div id="imgSendModal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3 id="imgSendTitle">Enviar imagem</h3>
+        <button class="btn ghost icon" data-close>✕</button>
+      </div>
+      <div class="img-send-body"><img id="imgSendPreview" alt="" /><div id="imgSendInfo" class="muted small"></div></div>
+      <div class="modal-foot">
+        <button class="btn ghost" data-close>Cancelar</button>
+        <button id="btnImgSend" class="btn primary">Enviar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Imagem do chat em tamanho grande -->
+  <div id="imgViewModal" class="modal img-view hidden">
+    <img id="imgView" alt="" />
+    <div class="img-view-bar">
+      <button id="btnImgSave" class="btn small">Salvar imagem</button>
+      <button class="btn ghost small" data-close>Fechar</button>
     </div>
   </div>
 

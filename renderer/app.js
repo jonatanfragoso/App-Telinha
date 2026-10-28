@@ -30,6 +30,126 @@ function colorFor(id) {
 }
 const memberName = (id) => (state.members.find((m) => m.id === id) || {}).name || 'alguém';
 
+// ---------------------------------------------------------------- avatares
+// Avatar pronto (emoji + cor) ou foto 128x128. Para a sala vai só a referência; a foto é pedida uma vez.
+const AV_EMOJIS = ['🐱', '🐶', '🦊', '🐼', '🐸', '🐵', '🦁', '🐯', '🐻', '🐨', '🐷', '🐙', '🦄', '🐲', '🦖', '🐧', '🦉', '🐺',
+  '👾', '🤖', '👻', '💀', '🎃', '👽', '🥷', '🧙', '🍕', '🍔', '🎮', '🚀', '🔥', '⚡', '🌵', '⚽', '🎧', '😎'];
+const AV_COLORS = ['#ff5a3c', '#e8455b', '#a855f7', '#4f6bed', '#1ea5c9', '#24a86b', '#d4a017', '#5b6475'];
+const avatarCache = new Map(); // hash -> data URL (já conferida)
+const avatarAsked = new Map(); // id|hash -> quando pedi
+
+function cleanAvatarRef(a) {
+  if (!a || typeof a !== 'object') return null;
+  if (a.kind === 'emoji' && AV_EMOJIS.includes(a.emoji)) return { kind: 'emoji', emoji: a.emoji, color: Math.max(0, Math.min(7, Number(a.color) | 0)) };
+  if (a.kind === 'photo' && typeof a.hash === 'string' && /^[0-9a-f]{16}$/.test(a.hash)) return { kind: 'photo', hash: a.hash };
+  return null;
+}
+
+// HTML da bolinha de alguém. size em px (padrão do CSS: 30)
+function avatarHTML(id, size) {
+  const m = state.members.find((x) => x.id === id);
+  const av = id === state.selfId ? settings.avatar : m && m.avatar;
+  return avatarFor(av, m ? m.name : memberName(id), id, size);
+}
+function avatarFor(av, name, id, size) {
+  const dim = size ? `width:${size}px;height:${size}px;font-size:${Math.round(size * 0.45)}px;` : '';
+  if (av && av.kind === 'emoji') return `<span class="avatar emoji" style="${dim}background:${AV_COLORS[av.color] || AV_COLORS[0]}">${esc(av.emoji)}</span>`;
+  const photo = av && av.kind === 'photo' && (av.data || avatarCache.get(av.hash));
+  if (photo) return `<span class="avatar photo" style="${dim}background-image:url('${photo}')"></span>`;
+  return `<span class="avatar" style="${dim}background:${colorFor(id)}">${esc(((name || '?')[0] || '?').toUpperCase())}</span>`;
+}
+
+const PHOTO_RE = /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/;
+async function sha16(text) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+}
+function askAvatars() {
+  for (const m of state.members) {
+    if (m.id === state.selfId || !m.avatar || m.avatar.kind !== 'photo' || avatarCache.has(m.avatar.hash)) continue;
+    const k = `${m.id}|${m.avatar.hash}`;
+    if (Date.now() - (avatarAsked.get(k) || 0) < 30000) continue;
+    avatarAsked.set(k, Date.now());
+    T.send(m.id, { type: 'avatarreq', hash: m.avatar.hash });
+  }
+}
+function onAvatarReq(m) {
+  const av = settings.avatar;
+  if (av && av.kind === 'photo' && av.hash === m.hash) T.send(m.from, { type: 'avatar', hash: av.hash, data: av.data });
+}
+async function onAvatar(m) {
+  if (typeof m.data !== 'string' || m.data.length > 90000 || !PHOTO_RE.test(m.data)) return;
+  if (typeof m.hash !== 'string' || (await sha16(m.data)) !== m.hash) return; // a foto tem que bater com a referência
+  avatarCache.set(m.hash, m.data);
+  renderMembers(); renderLive(); refreshTileAvatars(); renderChat.sig = null; renderChat();
+}
+function refreshTileAvatars() {
+  for (const [id, w] of inPcs) {
+    const a = w.tile.querySelector('.tile-head .avatar');
+    if (a) a.outerHTML = avatarHTML(id, 22);
+  }
+}
+
+// ----- recorte da foto: arrastar + zoom dentro de um círculo, saída 128x128
+const CROP = 280; // lado da área de recorte (px)
+const crop = { bmp: null, zoom: 1, x: 0, y: 0 }; // x, y = deslocamento do centro da imagem
+
+function cropScale() { return (CROP / Math.min(crop.bmp.width, crop.bmp.height)) * crop.zoom; }
+function clampCrop() {
+  const s = cropScale();
+  const mx = (crop.bmp.width * s - CROP) / 2, my = (crop.bmp.height * s - CROP) / 2;
+  crop.x = Math.max(-mx, Math.min(mx, crop.x));
+  crop.y = Math.max(-my, Math.min(my, crop.y));
+}
+function drawCrop(ctx, size) {
+  const k = size / CROP, s = cropScale() * k;
+  const w = crop.bmp.width * s, h = crop.bmp.height * s;
+  ctx.clearRect(0, 0, size, size);
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(crop.bmp, size / 2 - w / 2 + crop.x * k, size / 2 - h / 2 + crop.y * k, w, h);
+}
+function renderCrop() {
+  const c = $('#cropCanvas'), dpr = window.devicePixelRatio || 1;
+  c.width = c.height = Math.round(CROP * dpr);
+  drawCrop(c.getContext('2d'), c.width);
+}
+function setCropZoom(z) {
+  crop.zoom = Math.max(1, Math.min(4, z));
+  $('#cropZoom').value = String(crop.zoom);
+  clampCrop(); renderCrop();
+}
+async function openCrop(file) {
+  crop.bmp = await createImageBitmap(file);
+  crop.x = 0; crop.y = 0;
+  $('#cropModal').classList.remove('hidden');
+  setCropZoom(1);
+}
+function cropToAvatar() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  drawCrop(c.getContext('2d'), 128);
+  let data = c.toDataURL('image/webp', 0.85);
+  if (!data.startsWith('data:image/webp') || data.length > 60000) data = c.toDataURL('image/jpeg', 0.8);
+  return data;
+}
+(() => {
+  const stage = $('#cropStage');
+  let drag = null;
+  stage.onpointerdown = (e) => { drag = { px: e.clientX, py: e.clientY, x: crop.x, y: crop.y }; stage.setPointerCapture(e.pointerId); };
+  stage.onpointermove = (e) => {
+    if (!drag) return;
+    crop.x = drag.x + e.clientX - drag.px; crop.y = drag.y + e.clientY - drag.py;
+    clampCrop(); renderCrop();
+  };
+  stage.onpointerup = stage.onpointercancel = () => { drag = null; };
+  stage.onwheel = (e) => { e.preventDefault(); setCropZoom(crop.zoom * Math.exp(-e.deltaY * 0.0015)); };
+  $('#cropZoom').oninput = (e) => setCropZoom(Number(e.target.value));
+  $('#btnCropOk').onclick = () => {
+    avDraft = { kind: 'photo', data: cropToAvatar() };
+    $('#cropModal').classList.add('hidden');
+    renderAvatarPick();
+  };
+})();
+
 // ---------------------------------------------------------------- SDP
 function mungeSdp(sdp, mbps) {
   const lines = sdp.split('\r\n');
@@ -111,6 +231,9 @@ T.onSignal(async (m) => {
       case 'chat': return onChat(m);
       case 'askstream': return onAskStream(m.from);
       case 'askreply': return onAskReply(m);
+      case 'avatarreq': return onAvatarReq(m);
+      case 'avatar': return onAvatar(m);
+      case 'chatimg': return onChatImgPart(m);
     }
   } catch (e) { log(`sinal ${m.type}: ${e.message}`); }
 });
@@ -233,7 +356,7 @@ function openTile(streamerId) {
   const tile = el('div', 'tile');
   tile.innerHTML = `
     <div class="tile-head">
-      <span class="avatar" style="width:22px;height:22px;font-size:11px;background:${colorFor(streamerId)}">${esc(memberName(streamerId)[0] || '?').toUpperCase()}</span>
+      ${avatarHTML(streamerId, 22)}
       <span class="t">${esc(memberName(streamerId))}</span>
       <span title="Volume">🔊</span><input type="range" min="0" max="100" value="100" class="vol" />
       <button class="btn ghost small" data-a="stats" title="Estatísticas">ⓘ</button>
@@ -610,6 +733,7 @@ function cleanMember(m) {
       ? { title: str(m.streaming.title, 200), w: num(m.streaming.w), h: num(m.streaming.h), fps: num(m.streaming.fps) } : null,
     playing: m.playing && typeof m.playing === 'object' && str(m.playing.name, 60)
       ? { name: str(m.playing.name, 60), requests: !!m.playing.requests } : null,
+    avatar: cleanAvatarRef(m.avatar),
   };
 }
 
@@ -618,7 +742,7 @@ T.onState((s) => {
   s.members = (Array.isArray(s.members) ? s.members : []).filter((m) => m && typeof m.id === 'string').map(cleanMember);
   state = s;
   renderNet(); renderMembers(); renderLive(); renderChat();
-  checkAutoWatch();
+  checkAutoWatch(); askAvatars(); refreshTileAvatars();
   if (!$('#pickModal').classList.contains('hidden')) updateUploadHint();
   // nomes nas tiles podem ter chegado depois
   for (const [id, w] of inPcs) {
@@ -658,7 +782,7 @@ function renderMembers() {
     const dm = chats.get(m.id);
     if (dm && dm.unread) li.classList.add('dm-unread');
     li.innerHTML = `
-      <span class="avatar" style="background:${colorFor(m.id)}">${esc((m.name || '?')[0].toUpperCase())}</span>
+      ${avatarHTML(m.id)}
       <div class="meta">
         <div class="nm">${esc(m.name)}${m.isHost ? '<span class="crown" title="Host">♛</span>' : ''}${m.streaming ? '<span class="tag-live">AO VIVO</span>' : ''}</div>
         ${m.playing ? `<div class="game" title="${esc(m.playing.name)}">🎮 ${esc(m.playing.name)}</div>` : ''}
@@ -705,7 +829,7 @@ function renderLive() {
     const c = el('div', 'live-card');
     const watching = inPcs.has(m.id);
     c.innerHTML = `
-      <span class="avatar" style="background:${colorFor(m.id)}">${esc(m.name[0].toUpperCase())}</span>
+      ${avatarHTML(m.id)}
       <div class="meta"><div class="t">${esc(m.name)}</div>
       <div class="s" title="${esc(m.streaming.title)}">${esc(m.streaming.title)} · ${esc(m.streaming.h || '')}p${esc(m.streaming.fps || '')}</div></div>`;
     const b = el('button', 'btn ' + (watching ? 'ghost' : 'primary') + ' small', watching ? 'Assistindo' : 'Assistir');
@@ -814,10 +938,115 @@ function renderChat() {
   for (const m of c.msgs) {
     const d = el('div', 'msg' + (m.sys ? ' sys' : ''));
     d.innerHTML = m.sys ? esc(m.text)
-      : `<span class="who" style="color:${m.mine ? 'var(--accent-2)' : colorFor(m.from)}">${esc(m.name)}</span><span class="when">${new Date(m.ts).toLocaleTimeString().slice(0, 5)}</span><div class="body">${linkify(m.text)}</div>`;
+      : `<div class="who-row">${avatarHTML(m.from, 18)}<span class="who" style="color:${m.mine ? 'var(--accent-2)' : colorFor(m.from)}">${esc(m.name)}</span><span class="when">${new Date(m.ts).toLocaleTimeString().slice(0, 5)}</span></div><div class="body">${m.img ? `<img class="chat-img" src="${m.img}" data-ts="${m.ts}" alt="imagem" />` : m.imgGone ? '<span class="muted">(imagem antiga, removida da memória)</span>' : linkify(m.text)}</div>`;
     log.append(d);
   }
   if (atBottom || (c.msgs.length && c.msgs[c.msgs.length - 1].mine)) log.scrollTop = log.scrollHeight;
+}
+
+// ----- imagens no chat (temporárias como o resto: só na memória)
+// Vão pelo host em pedaços de 200 KB, porque o host derruba mensagens WebSocket acima de 512 KB.
+const IMG_RE = /^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/;
+const IMG_MAX = 2_800_000; // tamanho máximo do data URL (~2 MB de imagem)
+const IMG_PART = 200_000;
+const IMG_KEEP = 60; // imagens mantidas na memória; as mais antigas viram aviso
+const imgIn = new Map(); // from|id -> { parts, got, n, scope, name, t }
+const imgMsgs = [];
+let imgPending = null; // { data, to: 'room' | memberId }
+
+const readDataURL = (blob) => new Promise((ok, fail) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = fail; r.readAsDataURL(blob); });
+// reduz para no máximo 1920 px e comprime; GIF pequeno vai como está (mantém a animação)
+async function prepareImage(file) {
+  if (file.type === 'image/gif' && file.size <= 2_000_000) return readDataURL(file);
+  const bmp = await createImageBitmap(file);
+  for (const [maxSide, q] of [[1920, 0.85], [1920, 0.7], [1440, 0.7], [1080, 0.65]]) {
+    const k = Math.min(1, maxSide / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    let data = c.toDataURL('image/webp', q);
+    if (!data.startsWith('data:image/webp')) data = c.toDataURL('image/jpeg', q);
+    if (data.length <= IMG_MAX) return data;
+  }
+  throw new Error('grande demais');
+}
+
+async function openImgSend(file) {
+  if (!file || !/^image\//.test(file.type)) return;
+  const to = activeChat;
+  if (to === 'room' ? state.members.length <= 1 : !state.members.some((x) => x.id === to)) return toast(to === 'room' ? 'Não tem mais ninguém na sala agora.' : 'Essa pessoa não está mais na sala.');
+  let data;
+  try { data = await prepareImage(file); } catch { return toast('Não consegui preparar essa imagem.'); }
+  imgPending = { data, to };
+  $('#imgSendTitle').textContent = to === 'room' ? 'Enviar imagem para a sala' : `Enviar imagem para ${memberName(to)}`;
+  $('#imgSendPreview').src = data;
+  $('#imgSendInfo').textContent = `${Math.round((data.length * 0.75) / 1024)} KB`;
+  $('#imgSendModal').classList.remove('hidden');
+}
+
+function sendImg() {
+  const p = imgPending; imgPending = null;
+  $('#imgSendModal').classList.add('hidden');
+  if (!p) return;
+  const targets = p.to === 'room' ? state.members.filter((x) => x.id !== state.selfId).map((x) => x.id) : [p.to];
+  if (!targets.length || (p.to !== 'room' && !state.members.some((x) => x.id === p.to))) return toast('Ninguém para receber a imagem agora.');
+  const id = crypto.randomUUID();
+  const n = Math.ceil(p.data.length / IMG_PART);
+  for (const t of targets) {
+    for (let i = 0; i < n; i++) {
+      T.send(t, { type: 'chatimg', scope: p.to === 'room' ? 'room' : 'dm', id, n, i, part: p.data.slice(i * IMG_PART, (i + 1) * IMG_PART), name: settings.name });
+    }
+  }
+  pushImg(p.to, { from: state.selfId, name: settings.name, text: '', img: p.data, ts: Date.now(), mine: true });
+  renderChat();
+}
+
+function pushImg(key, msg) {
+  pushMsg(key, msg);
+  imgMsgs.push(msg);
+  while (imgMsgs.length > IMG_KEEP) { const old = imgMsgs.shift(); old.img = null; old.imgGone = true; }
+}
+
+function onChatImgPart(m) {
+  const n = Number(m.n), i = Number(m.i);
+  if (typeof m.id !== 'string' || m.id.length > 64 || typeof m.part !== 'string' || !(n >= 1 && n <= Math.ceil(IMG_MAX / IMG_PART)) || !(i >= 0 && i < n)) return;
+  const now = Date.now();
+  for (const [k, x] of imgIn) if (now - x.t > 60000) imgIn.delete(k); // envios que não terminaram
+  const key = `${m.from}|${m.id}`;
+  let x = imgIn.get(key);
+  if (!x) {
+    if ([...imgIn.keys()].filter((k) => k.startsWith(m.from + '|')).length >= 3) return; // no máximo 3 ao mesmo tempo por pessoa
+    x = { parts: new Array(n), got: 0, size: 0, n, scope: m.scope === 'dm' ? 'dm' : 'room', name: m.name, t: now };
+    imgIn.set(key, x);
+  }
+  if (x.n !== n || x.parts[i] != null) return;
+  x.size += m.part.length;
+  if (x.size > IMG_MAX) return imgIn.delete(key);
+  x.parts[i] = m.part; x.got++;
+  if (x.got < n) return;
+  imgIn.delete(key);
+  const data = x.parts.join('');
+  if (!IMG_RE.test(data)) return;
+  const name = state.members.some((y) => y.id === m.from) ? memberName(m.from) : String(x.name || 'alguém').slice(0, 32);
+  const chatKey = x.scope === 'dm' ? m.from : 'room';
+  pushImg(chatKey, { from: m.from, name, text: '', img: data, ts: Date.now(), dmName: name });
+  if (chatKey !== 'room') T.attention();
+  renderChat(); renderMembers();
+}
+
+let imgViewing = null;
+function openImgView(msg) {
+  imgViewing = msg;
+  $('#imgView').src = msg.img;
+  $('#imgViewModal').classList.remove('hidden');
+}
+function saveImgView() {
+  if (!imgViewing || !imgViewing.img) return;
+  const ext = (/^data:image\/(\w+)/.exec(imgViewing.img) || [, 'png'])[1].replace('jpeg', 'jpg');
+  const a = document.createElement('a');
+  a.href = imgViewing.img;
+  a.download = `telinha-${new Date(imgViewing.ts).toISOString().slice(0, 19).replace(/[T:]/g, '-')}.${ext}`;
+  a.click();
 }
 
 // ---------------------------------------------------------------- pedidos de transmissão
@@ -865,7 +1094,7 @@ function onAskStream(from) {
   keys.forEach((k) => askBlock.set(k, Date.now() + ASK_COOLDOWN));
 
   const card = el('div', 'req-card');
-  card.innerHTML = `<span class="avatar" style="background:${colorFor(from)}">${esc((name[0] || '?').toUpperCase())}</span>
+  card.innerHTML = `${avatarHTML(from)}
     <div class="txt"><b>${esc(name)}</b> pediu pra você transmitir <b>${esc(myGame.name)}</b>.
     <div class="muted small">Nada é transmitido até você escolher a tela e confirmar. <button class="link" data-a="off">Não aceitar mais pedidos</button></div></div>`;
   const ok = el('button', 'btn primary small', 'Escolher o que transmitir');
@@ -899,7 +1128,29 @@ function renderGameNow() {
 }
 
 // ---------------------------------------------------------------- configurações
+let avDraft = null;
+function renderAvatarPick() {
+  $('#avPreview').outerHTML = avatarFor(avDraft, $('#sName').value || settings.name, state.selfId, 56).replace('class="avatar', 'id="avPreview" class="avatar big');
+  const em = $('#avEmojis'); em.innerHTML = '';
+  for (const e of AV_EMOJIS) {
+    const b = el('button', avDraft && avDraft.kind === 'emoji' && avDraft.emoji === e ? 'sel' : '', e);
+    b.type = 'button';
+    b.onclick = () => { avDraft = { kind: 'emoji', emoji: e, color: avDraft && avDraft.kind === 'emoji' ? avDraft.color : 0 }; renderAvatarPick(); };
+    em.append(b);
+  }
+  const co = $('#avColors'); co.innerHTML = '';
+  co.classList.toggle('hidden', !(avDraft && avDraft.kind === 'emoji'));
+  AV_COLORS.forEach((c, i) => {
+    const b = el('button', avDraft && avDraft.color === i ? 'sel' : '');
+    b.type = 'button'; b.style.background = c; b.title = 'Cor de fundo';
+    b.onclick = () => { avDraft = { ...avDraft, color: i }; renderAvatarPick(); };
+    co.append(b);
+  });
+}
+
 async function openSettings() {
+  avDraft = settings.avatar || null;
+  renderAvatarPick();
   $('#sName').value = settings.name || '';
   $('#sRoom').value = settings.room || '';
   const pr = Number(settings.priority) || 0;
@@ -925,10 +1176,11 @@ async function saveSettings() {
     gameRequests: $('#sGameRequests').checked,
     gameList: $('#sGameList').value.split('\n').map((x) => x.trim()).filter(Boolean),
     gameIgnore: $('#sGameIgnore').value.split(/[\n,]/).map((x) => x.trim()).filter(Boolean),
+    avatar: avDraft,
   };
   settings = await T.setSettings(patch);
   $('#setModal').classList.add('hidden');
-  renderNet();
+  renderNet(); renderMembers(); renderChat.sig = null; renderChat();
   toast(patch.tailscalePath && settings.tailscalePath !== patch.tailscalePath
     ? 'Salvo, mas o caminho do Tailscale foi ignorado: precisa ser um arquivo tailscale.exe que exista.' : 'Salvo', 6000);
 }
@@ -946,7 +1198,38 @@ $('#btnStop').onclick = stopLive;
 $('#btnSettings').onclick = openSettings;
 $('#btnSaveSettings').onclick = saveSettings;
 $('#btnChat').onclick = () => setChatOpen(!chatOpen);
+$('#btnAvPhoto').onclick = () => $('#avFile').click();
+$('#btnAvLetter').onclick = () => { avDraft = null; renderAvatarPick(); };
+$('#avFile').onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try { await openCrop(f); }
+  catch { toast('Não consegui abrir essa imagem. Tente um JPG ou PNG.'); }
+};
 $('#chatForm').onsubmit = (e) => { e.preventDefault(); sendChat($('#chatInput').value); $('#chatInput').value = ''; };
+$('#btnChatImg').onclick = () => $('#chatImgFile').click();
+$('#chatImgFile').onchange = (e) => { const f = e.target.files[0]; e.target.value = ''; openImgSend(f); };
+$('#chatInput').addEventListener('paste', (e) => {
+  const f = [...(e.clipboardData ? e.clipboardData.files : [])].find((x) => /^image\//.test(x.type));
+  if (f) { e.preventDefault(); openImgSend(f); }
+});
+$('#btnImgSend').onclick = sendImg;
+$('#btnImgSave').onclick = saveImgView;
+$('#imgViewModal').onclick = (e) => { if (e.target.id === 'imgViewModal') $('#imgViewModal').classList.add('hidden'); };
+$('#chatLog').addEventListener('click', (e) => {
+  const img = e.target.closest('.chat-img'); if (!img) return;
+  const msg = chatFor(activeChat).msgs.find((x) => String(x.ts) === img.dataset.ts && x.img);
+  if (msg) openImgView(msg);
+});
+// arrastar imagem para o chat; soltar arquivo fora do chat não faz nada
+['dragover', 'drop'].forEach((ev) => document.addEventListener(ev, (e) => e.preventDefault()));
+$('#chat').addEventListener('dragover', () => $('#chat').classList.add('drop'));
+$('#chat').addEventListener('dragleave', (e) => { if (!$('#chat').contains(e.relatedTarget)) $('#chat').classList.remove('drop'); });
+$('#chat').addEventListener('drop', (e) => {
+  $('#chat').classList.remove('drop');
+  const f = [...e.dataTransfer.files].find((x) => /^image\//.test(x.type));
+  if (f) openImgSend(f);
+});
 window.addEventListener('focus', () => { renderChat(); renderMembers(); });
 T.onGame((g) => { myGame = g; renderGameNow(); });
 fillQualitySelects();
@@ -955,7 +1238,12 @@ $('#qPreset').onchange = applyPreset;
 ['#qRes', '#qFps', '#qBitrate'].forEach((s) => ($(s).onchange = onManualQuality));
 ['#qCodec', '#qPref'].forEach((s) => ($(s).onchange = saveQuality));
 ['#liveRes', '#liveFps', '#liveBitrate', '#livePref'].forEach((s) => ($(s).onchange = liveTune));
-window.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('.modal').forEach((m) => m.classList.add('hidden')); });
+// Esc fecha só a janela de cima (ex.: o recorte da foto, sem fechar as configurações)
+window.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  const open = [...document.querySelectorAll('.modal:not(.hidden)')];
+  if (open.length) open[open.length - 1].classList.add('hidden');
+});
 
 // ---------------------------------------------------------------- atualização
 function renderUpdate(u) {
