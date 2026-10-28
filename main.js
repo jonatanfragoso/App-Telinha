@@ -7,6 +7,8 @@ const { Mesh } = require('./lib/mesh');
 const audio = require('./lib/audio');
 const updater = require('./lib/updater');
 const games = require('./lib/games');
+const firewall = require('./lib/firewall');
+const tailscale = require('./lib/tailscale');
 
 // Sem isso o Chromium esconde os IPs locais atrás de nomes .local (mDNS),
 // e quem só assiste não conseguiria conectar pelo IP do Tailscale.
@@ -196,6 +198,15 @@ ipcMain.handle('update:status', () => updater.status);
 ipcMain.on('update:install', () => { audio.stop(); updater.install(); });
 ipcMain.on('update:busy', (_e, b) => updater.setBusy(b));
 ipcMain.handle('games:current', () => games.current());
+ipcMain.handle('firewall:status', () => firewall.status());
+ipcMain.handle('firewall:fix', () => firewall.fix());
+ipcMain.handle('tailscale:networks', () => tailscale.networks(settings.tailscalePath || null));
+ipcMain.handle('tailscale:switch', async (_e, id) => {
+  try { await tailscale.switchTo(String(id), settings.tailscalePath || null); }
+  catch (e) { return { ok: false, message: String(e.message || e).split('\n')[0] }; }
+  setTimeout(() => mesh && mesh.tick(), 1500); // o IP do Tailscale muda: varre de novo logo
+  return { ok: true };
+});
 ipcMain.on('win:attention', () => {
   if (!win || win.isFocused()) return;
   win.flashFrame(true);

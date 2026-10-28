@@ -158,6 +158,7 @@
     <section class="step" id="tailscale">
       <div class="step-head"><span class="num">1</span><h2>Entrar na rede do grupo (Tailscale)</h2></div>
       <p>O Tailscale liga os PCs do grupo como se estivessem na mesma casa. Uma pessoa <b>organiza</b> (cria a rede e convida) e os outros só <b>aceitam o convite</b>.</p>
+      <p class="muted">Vai organizar o grupo? <a href="#organizar">Veja como criar a rede e convidar os amigos ↓</a></p>
 
       <details class="big">
         <summary>Fui convidado: como entro na rede? <span class="tag">a maioria das pessoas</span></summary>
@@ -169,6 +170,14 @@
             <li>Ele pede para entrar com uma conta. Escolha <b>Google</b>, <b>Microsoft</b> ou outra, e use <b>a conta do mesmo e-mail que recebeu o convite</b>.</li>
             <li>Se aparecer uma pergunta sobre o uso, pode responder qualquer coisa e seguir.</li>
           </ol>
+          <div class="note">
+            <p><b>Já usava o Tailscale antes, com outra rede?</b> A sua conta pode estar em mais de uma rede, mas o PC só usa <b>uma por vez</b>. Se você já tinha uma rede sua, o PC continua nela e não vai ver o grupo. Depois de instalar (passo b), faça assim:</p>
+            <ol>
+              <li>Clique no ícone do Tailscale perto do relógio → no nome da sua conta → <span class="ui">Add another account...</span></li>
+              <li>Entre com a mesma conta e, quando ele perguntar em qual rede entrar, escolha <b>a rede de quem te convidou</b>.</li>
+              <li>Pronto: no mesmo menu dá para ver as duas redes. Deixe marcada a do grupo. Também dá para trocar pelo próprio Telinha, em <span class="ui">⚙</span> → <b>Rede do Tailscale</b>.</li>
+            </ol>
+          </div>
 
           <h3>b) Instale o Tailscale no Windows</h3>
           <ol>
@@ -187,7 +196,7 @@
         </div>
       </details>
 
-      <details>
+      <details id="organizar">
         <summary>Sou eu quem organiza o grupo: como crio a rede? <span class="tag">só uma pessoa</span></summary>
         <div class="inner">
           <ol>
@@ -200,6 +209,15 @@
             <p><b>Importante:</b> convide como <b>usuário</b> (Invite users). A opção "compartilhar dispositivo" não serve para o Telinha, porque só funciona em uma direção.</p>
             <p>O plano grátis do Tailscale tem um limite de usuários. Confira se cabe o seu grupo em <a href="https://tailscale.com/pricing" target="_blank" rel="noopener">tailscale.com/pricing</a>.</p>
           </div>
+
+          <h3>Quer que outro amigo também possa convidar?</h3>
+          <p>Você faz isso uma vez só; o amigo não precisa fazer nada:</p>
+          <ol>
+            <li>No mesmo painel (<span class="ui">Users</span>), clique nos três pontinhos <span class="ui">⋯</span> ao lado do nome dele → <span class="ui">Edit role</span>.</li>
+            <li>Escolha <b>IT admin</b> e salve.</li>
+          </ol>
+          <p>A partir daí ele também convida pelo painel dele (<span class="ui">Users</span> → <span class="ui">Invite users</span>), e quem ele chamar entra <b>na mesma rede</b>. Dê esse cargo só para quem você confia: ele também pode remover pessoas e PCs. (O cargo <b>Admin</b> pode ainda mais, inclusive mudar as regras de acesso da rede.)</p>
+          <div class="note"><p>Não peça para o amigo criar <b>outra</b> rede: quem estiver numa rede não vê quem está na outra. O grupo inteiro precisa estar numa rede só.</p></div>
         </div>
       </details>
     </section>
@@ -257,8 +275,11 @@
         </div>
       </div>
 
-      <h3>Quando o Telinha abrir pela primeira vez</h3>
-      <p>O Firewall do Windows pergunta se o Telinha pode usar a rede. Marque <b>as duas opções</b> e clique em <b>Permitir acesso</b>:</p>
+      <h3>No final da instalação</h3>
+      <p>O Windows pergunta <b>"Deseja permitir que este app faça alterações no seu dispositivo?"</b>. Clique em <b>Sim</b>: é o Telinha liberando a conexão dos seus amigos no Firewall do Windows, <b>só para a rede do Tailscale</b> (nunca para a internet ou para o Wi-Fi da casa). Ele só pergunta isso uma vez; as atualizações não perguntam de novo.</p>
+
+      <h3>Se aparecer o aviso do Firewall</h3>
+      <p>Se mesmo assim o Firewall do Windows perguntar se o Telinha pode usar a rede, marque <b>as duas opções</b> e clique em <b>Permitir acesso</b>:</p>
       <div class="mock">
         <div class="bar">Alerta de Segurança do Windows</div>
         <div class="body">
@@ -366,7 +387,14 @@
             <li>Os amigos estão com o Telinha <b>aberto</b>?</li>
             <li>Todo mundo está na <b>mesma rede do Tailscale</b>? No menu do Tailscale, os PCs deles precisam aparecer em <b>Network devices</b>.</li>
             <li>Todo mundo está na <b>mesma sala</b> (<span class="ui">⚙</span> → Sala)?</li>
-            <li>Você clicou em <b>Permitir acesso</b> no aviso do Firewall? Se clicou em Cancelar, desinstale e instale o Telinha de novo para a pergunta voltar.</li>
+            <li>O PC está na <b>rede certa</b>? Se você já usava o Tailscale antes, ele pode estar na sua rede antiga: troque em <span class="ui">⚙</span> → <b>Rede do Tailscale</b>. Se a rede do grupo não aparecer lá, veja <a href="#tailscale">"Já usava o Tailscale antes, com outra rede?"</a> no passo 1.</li>
+            <li>O firewall está liberado? Abra <span class="ui">⚙</span> no Telinha: em <b>Firewall do Windows</b> tem que aparecer "Liberado para a rede do Tailscale". Se não aparecer, clique em <span class="ui">Liberar no firewall</span> e depois em <b>Sim</b>. Isso vale para <b>todos</b> do grupo, não só para você.</li>
+            <li>Usa outro antivírus (Avast, AVG, Kaspersky, Norton…)? Ele pode ter um firewall próprio: libere o Telinha nas configurações dele.</li>
+          </ul>
+          <p><b>Teste para descobrir de quem é o problema:</b> com o Telinha aberto nos dois PCs, abra no navegador <code>http://IP-DO-AMIGO:47800/info</code> (o IP dele começa com <b>100.</b> e aparece no menu do Tailscale, em Network devices).</p>
+          <ul>
+            <li><b>Aparece um texto com "telinha":</b> o PC dele está ok. Confira se o <code>"room"</code> é a mesma sala que a sua.</li>
+            <li><b>Não carrega:</b> o problema está no PC dele (firewall ou Tailscale). Abra o PowerShell e rode <code>tailscale ping IP-DO-AMIGO</code>. Se responder <code>pong</code>, é o firewall dele. Se der <code>no matching peer</code>, vocês não estão na mesma rede do Tailscale.</li>
           </ul>
         </div>
       </details>
@@ -429,6 +457,9 @@
         }
       } catch {}
     })();
+    // links para um item fechado (ex.: #organizar) abrem o item
+    const openHash = () => { const d = location.hash && document.querySelector(`details${location.hash}`); if (d) d.open = true; };
+    window.addEventListener('hashchange', openHash); openHash();
     document.querySelectorAll('.dl-link').forEach((a) => {
       a.addEventListener('click', (e) => { if (a.getAttribute('href') === '#') { e.preventDefault(); document.getElementById('dlBtn').click(); } });
     });

@@ -1,5 +1,7 @@
 /* Telinha — interface e WebRTC */
 const T = window.telinha;
+let fwOk = null; // regra do firewall existe? null = não se aplica (rodando pelo código)
+let tsNets = []; // redes do Tailscale em que este PC já entrou
 const $ = (s) => document.querySelector(s);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -848,7 +850,10 @@ function renderMembers() {
   if (!state.tailscale || !state.tailscale.ok) {
     hint.innerHTML = 'Instale e entre no <b>Tailscale</b> com a mesma rede dos seus amigos. Depois é só deixar o Telinha aberto.';
   } else if (state.members.length <= 1) {
-    hint.innerHTML = `Ninguém mais por aqui. Seus amigos precisam estar na mesma tailnet, com o Telinha aberto e na sala <code>${esc(settings.room)}</code>.`;
+    const net = state.tailscale.tailnet;
+    hint.innerHTML = `Ninguém mais por aqui. Seus amigos precisam estar na mesma tailnet, com o Telinha aberto e na sala <code>${esc(settings.room)}</code>.`
+      + (net && tsNets.length > 1 ? `<br>Você está na rede <b>${esc(net)}</b>. <a href="#" class="ts-switch">Trocar de rede</a>` : '')
+      + (fwOk === false ? '<br><button class="btn small fw-fix">Liberar no firewall</button>' : '');
   } else hint.innerHTML = '';
 }
 
@@ -1273,6 +1278,7 @@ async function openSettings() {
   $('#sTsPath').value = settings.tailscalePath || '';
   $('#sSounds').checked = settings.sounds !== false;
   $('#sGameDetect').checked = !!settings.gameDetect;
+  checkFirewall(); loadNetworks();
   $('#sGameRequests').checked = settings.gameRequests !== false;
   $('#sGameList').value = (settings.gameList || []).join('\n');
   $('#sGameIgnore').value = (settings.gameIgnore || []).join('\n');
@@ -1313,6 +1319,53 @@ $('#btnReloadSources').onclick = loadSources;
 $('#btnGoLive').onclick = goLive;
 $('#btnStop').onclick = stopLive;
 $('#btnSettings').onclick = openSettings;
+
+// ---------- firewall (regra só para a rede do Tailscale; o instalador já cria) ----------
+function renderFirewall() {
+  $('#fwRow').classList.toggle('hidden', fwOk === null);
+  $('#fwText').textContent = fwOk ? 'Liberado para a rede do Tailscale' : 'Não liberado: seus amigos podem não conseguir te ver';
+  $('#btnFwFix').classList.toggle('hidden', !!fwOk);
+}
+async function checkFirewall() { fwOk = await T.firewallStatus(); renderFirewall(); renderMembers(); }
+async function fixFirewall() {
+  toast('Clique em "Sim" no aviso do Windows');
+  const r = await T.firewallFix();
+  toast(r.ok ? 'Pronto: Telinha liberado no firewall' : r.message);
+  await checkFirewall();
+  T.refresh();
+}
+$('#btnFwFix').onclick = fixFirewall;
+$('#sideHint').addEventListener('click', (e) => {
+  if (e.target.closest('.fw-fix')) fixFirewall();
+  if (e.target.closest('.ts-switch')) { e.preventDefault(); openSettings(); }
+});
+
+// ---------- rede do Tailscale (tailscale switch) ----------
+async function loadNetworks() {
+  tsNets = await T.tsNetworks();
+  const sel = $('#sTailnet');
+  sel.innerHTML = '';
+  for (const n of tsNets) {
+    const o = document.createElement('option');
+    o.value = n.id;
+    o.textContent = n.tailnet === n.account ? n.tailnet : `${n.tailnet} (${n.account})`;
+    o.selected = n.active;
+    sel.append(o);
+  }
+  sel.disabled = tsNets.length < 2;
+  $('#tsRow').classList.toggle('hidden', !tsNets.length);
+  renderMembers();
+}
+$('#sTailnet').onchange = async () => {
+  const n = tsNets.find((x) => x.id === $('#sTailnet').value);
+  if (!n) return;
+  if (my && !confirm('Você está transmitindo. Trocar de rede encerra a transmissão. Continuar?')) return loadNetworks();
+  if (my) stopLive();
+  toast(`Trocando para a rede ${n.tailnet}…`);
+  const r = await T.tsSwitch(n.id);
+  if (!r.ok) toast(`Não deu para trocar: ${r.message}`);
+  await loadNetworks();
+};
 $('#btnSaveSettings').onclick = saveSettings;
 $('#btnChat').onclick = () => setChatOpen(!chatOpen);
 $('#btnAvPhoto').onclick = () => $('#avFile').click();
@@ -1408,4 +1461,6 @@ $('#btnUpdLater').onclick = () => { renderUpdate.later = true; $('#updBanner').c
   const p = await T.platform();
   $('#appVersion').textContent = `Telinha ${p.version}`;
   renderNet(); renderMembers(); renderLive(); renderChat();
+  checkFirewall();
+  setTimeout(loadNetworks, 3000); // depois da primeira varredura (o caminho do tailscale.exe já foi achado)
 })();

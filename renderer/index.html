@@ -174,6 +174,12 @@
           <div id="avEmojis" class="av-emojis"></div>
           <div id="avColors" class="av-colors"></div>
         </div>
+        <div id="tsRow" class="hidden">
+          <label>Rede do Tailscale
+            <select id="sTailnet"></select>
+            <span class="muted small">Todo o grupo precisa estar na mesma rede. Trocar aqui é igual a trocar pelo menu do Tailscale. Para entrar numa rede nova, use o Tailscale: ícone perto do relógio → sua conta → <b>Add another account…</b></span>
+          </label>
+        </div>
         <label>Sala<input id="sRoom" maxlength="32" />
           <span class="muted small">Só quem estiver na mesma sala aparece pra você.</span></label>
         <label class="check"><input type="checkbox" id="sSounds" /> Tocar sons quando alguém entra, sai ou começa a transmitir</label>
@@ -201,6 +207,10 @@
           <textarea id="sExtra" rows="2" placeholder="Ex.: 192.168.0.20 para testar na rede local sem Tailscale"></textarea></label>
         <label>Caminho do tailscale.exe (opcional)
           <input id="sTsPath" placeholder="C:\Program Files\Tailscale\tailscale.exe" /></label>
+        <div id="fwRow" class="upd-row hidden">
+          <div><b>Firewall do Windows</b><div id="fwText" class="muted small">—</div></div>
+          <button id="btnFwFix" class="btn small">Liberar no firewall</button>
+        </div>
         <div class="upd-row">
           <div><b>Atualizações</b><div id="updText" class="muted small">—</div></div>
           <button id="btnUpdCheck" class="btn small">Verificar agora</button>

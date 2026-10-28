@@ -32,6 +32,10 @@ contextBridge.exposeInMainWorld('telinha', {
   onGame: on('games:current'),
   attention: () => ipcRenderer.send('win:attention'),
   focusWindow: () => ipcRenderer.send('win:focus'),
+  firewallStatus: () => ipcRenderer.invoke('firewall:status'),
+  firewallFix: () => ipcRenderer.invoke('firewall:fix'),
+  tsNetworks: () => ipcRenderer.invoke('tailscale:networks'),
+  tsSwitch: (id) => ipcRenderer.invoke('tailscale:switch', id),
 
   updateCheck: () => ipcRenderer.invoke('update:check'),
   updateStatus: () => ipcRenderer.invoke('update:status'),

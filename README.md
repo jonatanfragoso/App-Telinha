@@ -25,14 +25,16 @@ Transmissão de tela entre amigos no Windows: **P2P, 1080p60 (ou de 360p até 4K
 2. No painel (https://login.tailscale.com/admin/users), use **Invite users** e convide cada amigo por e-mail.
    - Todos precisam estar na **mesma tailnet**. O recurso "compartilhar dispositivo" não basta, porque ele só funciona em uma direção.
    - O plano gratuito tem limite de usuários. Confira se cabe o tamanho do grupo.
+   - Para outro amigo também poder convidar: em **Users**, ⋯ ao lado do nome dele → **Edit role → IT admin**. Ele convida para a mesma rede (não crie outra rede: redes diferentes não se enxergam).
 3. Cada amigo aceita o convite, instala o Tailscale no Windows e faz login com a conta convidada.
+   - Quem já usava o Tailscale com outra rede: a conta pode estar em várias, mas o PC usa **uma por vez**. Entre na rede do grupo pelo ícone do Tailscale → **Add another account…** e escolha a rede de quem convidou. Depois dá para trocar pelo Telinha, em ⚙ → **Rede do Tailscale**.
 4. Para testar, rode `tailscale status` no terminal: devem aparecer os PCs dos outros.
 
 ### 1.2 Telinha
 
 1. Baixe o `Telinha-Setup-x.y.z.exe` (da página de **Releases** do repositório, ou do arquivo que alguém mandou).
 2. Se o Windows mostrar **"O Windows protegeu o computador"**, clique em **Mais informações → Executar assim mesmo**. O aviso aparece porque o programa não é assinado digitalmente.
-3. Na primeira vez que abrir, o **Firewall do Windows** vai perguntar. Marque **Redes privadas e públicas** e clique em Permitir. O Telinha só escuta no IP do Tailscale, então ele não fica exposto na sua rede local nem na internet.
+3. No final da instalação o Windows pede um **Sim**: é o instalador liberando o Telinha no **Firewall do Windows**, só para a rede do Tailscale (`100.64.0.0/10`). As atualizações não perguntam de novo. Se recusar, dá para liberar depois em ⚙ → **Liberar no firewall**.
 4. Abra o Telinha, clique em **⚙** e coloque seu **nome**.
 
 A partir daí, as atualizações chegam sozinhas (veja a seção 6).
@@ -142,7 +144,7 @@ Se alterar o `native/audiocap.cpp`, recompile com:
 - **WSL/Linux:** `sudo apt install g++-mingw-w64-x86-64-posix` e depois `./native/build.sh`
 - **Windows:** abra o *x64 Native Tools Command Prompt* do Visual Studio, entre em `native` e rode `build.bat`
 
-**Testar dois PCs no mesmo computador não funciona**, porque os dois usariam a mesma porta (47800). Teste com outro PC na tailnet. Também dá pra testar na rede local sem Tailscale: coloque o IP do outro PC em ⚙ → *IPs extras*.
+**Testar dois PCs no mesmo computador não funciona**, porque os dois usariam a mesma porta (47800). Teste com outro PC na tailnet. Também dá pra testar na rede local sem Tailscale: coloque o IP do outro PC em ⚙ → *IPs extras* (na versão instalada, a regra do firewall só libera a rede do Tailscale; para a rede local, crie uma regra à parte).
 
 ---
 
@@ -175,7 +177,7 @@ Também dá pra publicar a partir do seu PC: `set GH_TOKEN=seu_token` e depois `
 | Sintoma | O que fazer |
 |---|---|
 | "Tailscale não encontrado ou desligado" | Abra o Tailscale e faça login. Se instalou em outra pasta, informe o caminho em ⚙. |
-| Não aparece ninguém na sala | Confira se estão na mesma tailnet (`tailscale status`), com o Telinha aberto, na mesma sala, e se o firewall permitiu o app. |
+| Não aparece ninguém na sala | Confira se estão na mesma tailnet (`tailscale status`; em ⚙ → *Rede do Tailscale* aparece a rede em uso), com o Telinha aberto, na mesma sala, e se o firewall está liberado (⚙ → *Firewall do Windows*). Teste: `http://IP-DO-AMIGO:47800/info` no navegador; se não carregar, `tailscale ping IP-DO-AMIGO` (pong = firewall dele; *no matching peer* = redes diferentes). |
 | "via relay (lento)" | O Tailscale não conseguiu conexão direta (CGNAT pesado) e está usando os servidores DERP dele, que são lentos para vídeo. Teste com `tailscale ping NOME-DO-PC`. Reiniciar o Tailscale ou ativar UPnP no roteador costuma resolver. |
 | Imagem travando ou borrada | Veja as estatísticas. "limitado: banda" → reduza bitrate/resolução; "CPU" → use H.264 e confira se aparece "GPU". |
 | Áudio falhou | Exige Windows 10 2004+. O app escolhido precisa estar tocando som. Veja o erro em ⚙ → Registro. |
