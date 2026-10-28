@@ -207,6 +207,11 @@ ipcMain.handle('tailscale:switch', async (_e, id) => {
   setTimeout(() => mesh && mesh.tick(), 1500); // o IP do Tailscale muda: varre de novo logo
   return { ok: true };
 });
+ipcMain.handle('tailscale:login', async () => {
+  const r = await tailscale.login(settings.tailscalePath || null, (url) => shell.openExternal(url));
+  if (r.ok) setTimeout(() => mesh && mesh.tick(), 1500);
+  return r;
+});
 ipcMain.on('win:attention', () => {
   if (!win || win.isFocused()) return;
   win.flashFrame(true);

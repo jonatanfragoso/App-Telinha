@@ -36,6 +36,7 @@ contextBridge.exposeInMainWorld('telinha', {
   firewallFix: () => ipcRenderer.invoke('firewall:fix'),
   tsNetworks: () => ipcRenderer.invoke('tailscale:networks'),
   tsSwitch: (id) => ipcRenderer.invoke('tailscale:switch', id),
+  tsLogin: () => ipcRenderer.invoke('tailscale:login'),
 
   updateCheck: () => ipcRenderer.invoke('update:check'),
   updateStatus: () => ipcRenderer.invoke('update:status'),

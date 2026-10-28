@@ -1366,6 +1366,18 @@ $('#sTailnet').onchange = async () => {
   if (!r.ok) toast(`Não deu para trocar: ${r.message}`);
   await loadNetworks();
 };
+$('#btnTsLogin').onclick = async () => {
+  if (my && !confirm('Você está transmitindo. Entrar em outra rede encerra a transmissão. Continuar?')) return;
+  if (my) stopLive();
+  const b = $('#btnTsLogin');
+  b.disabled = true; b.textContent = 'Esperando o login…';
+  toast('Abrindo o login do Tailscale no navegador. Entre com a sua conta e escolha a rede do grupo.', 8000);
+  const r = await T.tsLogin();
+  b.disabled = false; b.textContent = 'Entrar em outra rede…';
+  await loadNetworks();
+  const cur = tsNets.find((n) => n.active);
+  toast(r.ok ? `Pronto: você está na rede ${cur ? cur.tailnet : 'nova'}` : r.message, 6000);
+};
 $('#btnSaveSettings').onclick = saveSettings;
 $('#btnChat').onclick = () => setChatOpen(!chatOpen);
 $('#btnAvPhoto').onclick = () => $('#avFile').click();

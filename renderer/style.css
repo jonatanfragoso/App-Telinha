@@ -158,6 +158,8 @@ textarea { resize: vertical; }
 details summary { cursor: pointer; color: var(--muted); font-size: 13px; }
 
 .btn.update { background: rgba(60,207,142,.12); border-color: var(--ok); color: var(--ok); font-weight: 600; }
+.ts-pick { display: flex; gap: 8px; }
+.ts-pick select { flex: 1; min-width: 0; }
 .upd-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; background: var(--panel-2); border-radius: 8px; }
 .toast {
   position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--panel-2);

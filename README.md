@@ -27,7 +27,7 @@ Transmissão de tela entre amigos no Windows: **P2P, 1080p60 (ou de 360p até 4K
    - O plano gratuito tem limite de usuários. Confira se cabe o tamanho do grupo.
    - Para outro amigo também poder convidar: em **Users**, ⋯ ao lado do nome dele → **Edit role → IT admin**. Ele convida para a mesma rede (não crie outra rede: redes diferentes não se enxergam).
 3. Cada amigo aceita o convite, instala o Tailscale no Windows e faz login com a conta convidada.
-   - Quem já usava o Tailscale com outra rede: a conta pode estar em várias, mas o PC usa **uma por vez**. Entre na rede do grupo pelo ícone do Tailscale → **Add another account…** e escolha a rede de quem convidou. Depois dá para trocar pelo Telinha, em ⚙ → **Rede do Tailscale**.
+   - Quem já usava o Tailscale com outra rede: a conta pode estar em várias, mas o PC usa **uma por vez**. Entre na rede do grupo pelo Telinha (⚙ → **Rede do Tailscale** → **Entrar em outra rede…**, login no navegador e escolha a rede de quem convidou) ou pelo ícone do Tailscale → **Add another account…**. Depois dá para trocar de rede em ⚙ → **Rede do Tailscale**.
 4. Para testar, rode `tailscale status` no terminal: devem aparecer os PCs dos outros.
 
 ### 1.2 Telinha

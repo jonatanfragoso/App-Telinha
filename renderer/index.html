@@ -176,8 +176,8 @@
         </div>
         <div id="tsRow" class="hidden">
           <label>Rede do Tailscale
-            <select id="sTailnet"></select>
-            <span class="muted small">Todo o grupo precisa estar na mesma rede. Trocar aqui é igual a trocar pelo menu do Tailscale. Para entrar numa rede nova, use o Tailscale: ícone perto do relógio → sua conta → <b>Add another account…</b></span>
+            <div class="ts-pick"><select id="sTailnet"></select><button id="btnTsLogin" class="btn small" type="button">Entrar em outra rede…</button></div>
+            <span class="muted small">Todo o grupo precisa estar na mesma rede. Para entrar na rede de um amigo (depois de aceitar o convite), clique em <b>Entrar em outra rede…</b>, faça login no navegador e escolha a rede dele.</span>
           </label>
         </div>
         <label>Sala<input id="sRoom" maxlength="32" />
