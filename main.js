@@ -28,6 +28,7 @@ const DEFAULTS = {
 let settings = { ...DEFAULTS };
 function loadSettings() {
   try { settings = { ...DEFAULTS, ...JSON.parse(fs.readFileSync(settingsFile(), 'utf8')) }; } catch {}
+  if (settings.tailscalePath && !(path.basename(settings.tailscalePath).toLowerCase() === 'tailscale.exe' && fs.existsSync(settings.tailscalePath))) settings.tailscalePath = '';
 }
 function saveSettings() {
   fs.mkdirSync(path.dirname(settingsFile()), { recursive: true });
@@ -56,7 +57,12 @@ function createWindow() {
     },
   });
   win.loadFile(path.join(__dirname, 'renderer', 'index.html'));
-  win.webContents.setWindowOpenHandler(({ url }) => { shell.openExternal(url); return { action: 'deny' }; });
+  // links (ex.: do chat) só abrem no navegador se forem http/https; a janela nunca sai do app
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (/^https?:\/\//i.test(url)) shell.openExternal(url);
+    return { action: 'deny' };
+  });
+  win.webContents.on('will-navigate', (e) => e.preventDefault());
   win.on('closed', () => { win = null; });
   if (process.env.TELINHA_SHOT) {
     // usado só para teste automatizado da interface
@@ -100,10 +106,28 @@ app.on('window-all-closed', () => { audio.stop(); if (mesh) mesh.stop(); app.qui
 
 // ---------- IPC ----------
 ipcMain.handle('settings:get', () => settings);
-ipcMain.handle('settings:set', (_e, patch) => {
+const strList = (v, max) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string').map((x) => x.slice(0, 200)).slice(0, max) : []);
+// Só aceita os campos conhecidos, com o tipo certo. O caminho do Tailscale é executado pelo app,
+// então só vale um arquivo chamado tailscale.exe que exista.
+function cleanSettings(patch) {
+  const out = {};
+  if (typeof patch.name === 'string') out.name = patch.name.trim().slice(0, 32) || settings.name;
+  if (typeof patch.room === 'string') out.room = patch.room.trim().toLowerCase().slice(0, 32) || 'geral';
+  if (patch.priority !== undefined) out.priority = Math.max(-10, Math.min(10, Number(patch.priority) || 0));
+  if (patch.extraPeers !== undefined) out.extraPeers = strList(patch.extraPeers, 50).filter((ip) => /^[\d.:a-f]+$/i.test(ip));
+  if (typeof patch.tailscalePath === 'string') {
+    const p = patch.tailscalePath.trim();
+    if (!p || (path.basename(p).toLowerCase() === 'tailscale.exe' && fs.existsSync(p))) out.tailscalePath = p;
+  }
+  for (const k of ['gameDetect', 'gameRequests']) if (patch[k] !== undefined) out[k] = !!patch[k];
+  for (const k of ['gameList', 'gameIgnore']) if (patch[k] !== undefined) out[k] = strList(patch[k], 200);
+  return out;
+}
+
+ipcMain.handle('settings:set', (_e, raw) => {
+  const patch = cleanSettings(raw || {});
   const roomChanged = patch.room !== undefined && patch.room !== settings.room;
   settings = { ...settings, ...patch };
-  settings.priority = Number(settings.priority) || 0;
   saveSettings();
   if (roomChanged && mesh) { mesh.isHost = false; mesh.dropHostConn(); }
   if (mesh) mesh.tick();

@@ -120,11 +120,16 @@ async function onWatchRequest(viewerId) {
   if (!my) return T.send(viewerId, { type: 'nostream' });
   closeOut(viewerId);
   const pc = new RTCPeerConnection({ iceServers: [], bundlePolicy: 'max-bundle' });
-  const entry = { pc, stats: {}, last: null };
+  const entry = { pc, stats: {}, last: null, announced: false };
   outPcs.set(viewerId, entry);
   pc.onicecandidate = (e) => { if (e.candidate) T.send(viewerId, { type: 'ice', dir: 'toViewer', c: e.candidate.toJSON() }); };
   pc.onconnectionstatechange = () => {
     if (['failed', 'closed'].includes(pc.connectionState)) closeOut(viewerId);
+    if (pc.connectionState === 'connected' && !entry.announced) {
+      entry.announced = true;
+      toast(`${memberName(viewerId)} começou a assistir sua transmissão.`);
+      log(`${memberName(viewerId)} começou a assistir`);
+    }
     renderMyViewers();
   };
   const vt = my.stream.getVideoTracks()[0];
@@ -159,8 +164,8 @@ async function onOffer(m) {
   const w = inPcs.get(m.from) || openTile(m.from);
   if (w.pc) try { w.pc.close(); } catch {}
   const pc = new RTCPeerConnection({ iceServers: [], bundlePolicy: 'max-bundle' });
-  w.pc = pc; w.pendingIce = []; w.title = m.title;
-  w.tile.querySelector('.t').textContent = `${memberName(m.from)} — ${m.title || ''}`;
+  w.pc = pc; w.pendingIce = []; w.title = str(m.title, 200);
+  w.tile.querySelector('.t').textContent = `${memberName(m.from)} — ${w.title}`;
   pc.onicecandidate = (e) => { if (e.candidate) T.send(m.from, { type: 'ice', dir: 'toStreamer', c: e.candidate.toJSON() }); };
   pc.ontrack = (e) => {
     try { e.receiver.jitterBufferTarget = 0; } catch {}
@@ -179,7 +184,7 @@ async function onOffer(m) {
   for (const c of w.pendingIce) await pc.addIceCandidate(c).catch(() => {});
   w.pendingIce = [];
   const ans = await pc.createAnswer();
-  ans.sdp = mungeSdp(ans.sdp, m.bitrate || 8);
+  ans.sdp = mungeSdp(ans.sdp, Math.min(50, Math.max(1, Number(m.bitrate) || 8)));
   await pc.setLocalDescription(ans);
   T.send(m.from, { type: 'answer', sdp: ans.sdp });
   startInStats(m.from);
@@ -592,8 +597,23 @@ async function liveTune() {
 }
 
 // ---------------------------------------------------------------- estado da rede
+// Os dados dos membros vêm de outros PCs: só aceita os campos e tipos esperados.
+const str = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
+const num = (v) => (Number.isFinite(Number(v)) ? Math.round(Number(v)) : 0);
+function cleanMember(m) {
+  return {
+    id: str(m.id, 64), name: str(m.name, 32) || '?', ip: str(m.ip, 64),
+    isHost: !!m.isHost, direct: typeof m.direct === 'boolean' ? m.direct : null,
+    streaming: m.streaming && typeof m.streaming === 'object'
+      ? { title: str(m.streaming.title, 200), w: num(m.streaming.w), h: num(m.streaming.h), fps: num(m.streaming.fps) } : null,
+    playing: m.playing && typeof m.playing === 'object' && str(m.playing.name, 60)
+      ? { name: str(m.playing.name, 60), requests: !!m.playing.requests } : null,
+  };
+}
+
 T.onState((s) => {
   const prevIds = new Set(state.members.map((m) => m.id));
+  s.members = (Array.isArray(s.members) ? s.members : []).filter((m) => m && typeof m.id === 'string').map(cleanMember);
   state = s;
   renderNet(); renderMembers(); renderLive(); renderChat();
   checkAutoWatch();
@@ -684,7 +704,7 @@ function renderLive() {
     c.innerHTML = `
       <span class="avatar" style="background:${colorFor(m.id)}">${esc(m.name[0].toUpperCase())}</span>
       <div class="meta"><div class="t">${esc(m.name)}</div>
-      <div class="s" title="${esc(m.streaming.title)}">${esc(m.streaming.title)} · ${m.streaming.h || ''}p${m.streaming.fps || ''}</div></div>`;
+      <div class="s" title="${esc(m.streaming.title)}">${esc(m.streaming.title)} · ${esc(m.streaming.h || '')}p${esc(m.streaming.fps || '')}</div></div>`;
     const b = el('button', 'btn ' + (watching ? 'ghost' : 'primary') + ' small', watching ? 'Assistindo' : 'Assistir');
     b.disabled = watching;
     b.onclick = () => watch(m.id);
@@ -906,7 +926,8 @@ async function saveSettings() {
   settings = await T.setSettings(patch);
   $('#setModal').classList.add('hidden');
   renderNet();
-  toast('Salvo');
+  toast(patch.tailscalePath && settings.tailscalePath !== patch.tailscalePath
+    ? 'Salvo, mas o caminho do Tailscale foi ignorado: precisa ser um arquivo tailscale.exe que exista.' : 'Salvo', 6000);
 }
 
 // ---------------------------------------------------------------- eventos
