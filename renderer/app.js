@@ -1289,7 +1289,8 @@ function renderUpdate(u) {
   }[u.state] || '';
   $('#updText').textContent = txt;
   const b = $('#btnUpdate');
-  b.classList.toggle('hidden', u.state !== 'ready');
+  // com a faixa na tela, o botão do topo ficaria repetido: ele só aparece depois de "Depois"
+  b.classList.toggle('hidden', u.state !== 'ready' || !renderUpdate.later);
   if (u.state === 'ready') b.textContent = `Atualizar para ${u.version}`;
   // a faixa volta toda vez que o app abre, até a pessoa atualizar
   $('#updBannerText').innerHTML = `<b>Nova versão ${esc(u.version)} disponível.</b> Leva poucos segundos e o Telinha abre de novo.`;
@@ -1309,7 +1310,7 @@ T.onUpdate(renderUpdate);
 $('#btnUpdCheck').onclick = async () => renderUpdate(await T.updateCheck());
 $('#btnUpdate').onclick = installUpdate;
 $('#btnUpdNow').onclick = installUpdate;
-$('#btnUpdLater').onclick = () => { renderUpdate.later = true; $('#updBanner').classList.add('hidden'); };
+$('#btnUpdLater').onclick = () => { renderUpdate.later = true; $('#updBanner').classList.add('hidden'); $('#btnUpdate').classList.remove('hidden'); };
 
 (async () => {
   renderUpdate(await T.updateStatus());
