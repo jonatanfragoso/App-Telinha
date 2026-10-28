@@ -43,3 +43,16 @@ jobs:
         run: npm run release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Garante que o latest.yml (que o atualizador lê) esteja na Release.
+      - name: Garantir latest.yml na Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Arquivos gerados:"; ls -la dist
+          test -f dist/latest.yml || { echo "ERRO: dist/latest.yml não foi gerado"; exit 1; }
+          TAG="v$(node -p "require('./package.json').version")"
+          gh release upload "$TAG" dist/latest.yml dist/*.exe dist/*.blockmap --clobber
+          echo "Arquivos na Release $TAG:"
+          gh release view "$TAG" --json assets --jq '.assets[].name'
