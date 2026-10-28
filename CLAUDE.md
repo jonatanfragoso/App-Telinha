@@ -5,6 +5,8 @@ App desktop para **Windows** (Electron) de transmissão de tela entre um grupo p
 Repositório: `github.com/jonatanfragoso/App-Telinha` (público, necessário para o auto-update).
 Interface e mensagens ao usuário: **português do Brasil**.
 
+**Posicionamento (importante para o Jonatan):** o Telinha é para **uso privado entre amigos adultos (18+)**, sem fins comerciais. Desde 17/08/2026 o Discord está sem vídeo/compartilhamento de tela no Brasil por ordem da ANPD (ECA Digital). O Telinha **não** contorna isso: não usa, não modifica e não se integra ao Discord. Nunca divulgue nem descreva o app (site, README, textos) como "alternativa ao bloqueio do Discord" ou "jeito de burlar". O aviso "Uso responsável" fica no README e no site (`#uso`); mantenha-o. Se um dia houver divulgação para o público em geral, recomende falar com um advogado.
+
 ## Objetivos e decisões já tomadas
 
 - **Qualidade configurável:** 360p até 4K / "Original", 15–144 fps, 1–50 Mbps, codec H.264 (padrão, encode por GPU), VP9 ou AV1, prioridade fluidez/nitidez. Há predefinições, a última escolha fica salva (localStorage) e dá pra mudar resolução/fps/bitrate **ao vivo** (`applyConstraints` + `setParameters`).

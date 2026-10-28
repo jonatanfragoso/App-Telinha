@@ -9,6 +9,12 @@ Transmissão de tela entre amigos no Windows: **P2P, 1080p60 (ou de 360p até 4K
 - Mais de uma pessoa pode transmitir ao mesmo tempo, e você assiste uma ou várias, cada uma com seu próprio volume.
 - O áudio pode ser **só da janela/app compartilhado** ou **o sistema todo, menos o app de voz** (Discord, TeamSpeak, Teams…). Assim a voz da call não vaza.
 
+> **Uso responsável.** O Telinha é um projeto pessoal, gratuito e de código aberto, feito para **grupos privados de amigos adultos (18+)** compartilharem a tela entre si.
+> - Não é um serviço público nem uma rede social: não tem servidor, contas ou cadastro, e não guarda nem distribui conteúdo. Tudo acontece direto entre os PCs de pessoas que já se conhecem.
+> - Não modifica, não usa e não contorna o Discord nem qualquer outra plataforma. É um programa separado, como outros apps de compartilhamento de tela.
+> - Não é destinado a crianças e adolescentes.
+> - Cada pessoa é responsável pelo que transmite. Não use o Telinha para conteúdo ilegal, para expor alguém sem consentimento ou para qualquer coisa que envolva menores de idade.
+
 ---
 
 ## 1. Instalação (para cada amigo)
