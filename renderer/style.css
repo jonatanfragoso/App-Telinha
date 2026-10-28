@@ -248,3 +248,10 @@ fieldset.games legend { font-size: 13px; padding: 0 4px; }
 .modal.img-view.hidden { display: none !important; }
 .modal.img-view img { max-width: 94vw; max-height: 82vh; object-fit: contain; border-radius: 6px; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
 .img-view-bar { display: flex; gap: 8px; }
+
+/* ---- apagar mensagem ---- */
+.msg { position: relative; }
+.msg-del { position: absolute; top: -2px; right: 0; opacity: 0; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; font-size: 12px; cursor: pointer; }
+.msg:hover .msg-del { opacity: 1; }
+.msg-del:hover { border-color: var(--bad); }
+.msg .deleted { color: var(--muted); font-style: italic; }

@@ -234,6 +234,7 @@ T.onSignal(async (m) => {
       case 'avatarreq': return onAvatarReq(m);
       case 'avatar': return onAvatar(m);
       case 'chatimg': return onChatImgPart(m);
+      case 'chatdel': return onChatDel(m);
     }
   } catch (e) { log(`sinal ${m.type}: ${e.message}`); }
 });
@@ -865,7 +866,7 @@ function onChat(m) {
   if (!text) return;
   const name = state.members.some((x) => x.id === m.from) ? memberName(m.from) : String(m.name || 'alguém').slice(0, 32);
   const key = m.scope === 'dm' ? m.from : 'room';
-  pushMsg(key, { from: m.from, name, text, ts: Date.now(), dmName: name });
+  pushMsg(key, { id: str(m.id, 64), from: m.from, name, text, ts: Date.now(), dmName: name });
   if (key !== 'room') T.attention();
   renderChat(); renderMembers();
 }
@@ -874,14 +875,15 @@ function sendChat(text) {
   text = text.trim().slice(0, 1000);
   if (!text) return;
   const others = state.members.filter((x) => x.id !== state.selfId);
+  const id = crypto.randomUUID();
   if (activeChat === 'room') {
     if (!others.length) return toast('Não tem mais ninguém na sala agora.');
-    for (const o of others) T.send(o.id, { type: 'chat', scope: 'room', text, name: settings.name });
+    for (const o of others) T.send(o.id, { type: 'chat', scope: 'room', id, text, name: settings.name });
   } else {
     if (!others.some((o) => o.id === activeChat)) return toast('Essa pessoa não está mais na sala.');
-    T.send(activeChat, { type: 'chat', scope: 'dm', text, name: settings.name });
+    T.send(activeChat, { type: 'chat', scope: 'dm', id, text, name: settings.name });
   }
-  pushMsg(activeChat, { from: state.selfId, name: settings.name, text, ts: Date.now(), mine: true });
+  pushMsg(activeChat, { id, from: state.selfId, name: settings.name, text, ts: Date.now(), mine: true });
   renderChat();
 }
 
@@ -937,8 +939,9 @@ function renderChat() {
   if (!c.msgs.length) log.innerHTML = `<div class="chat-empty">${activeChat === 'room' ? 'Ninguém falou nada ainda.<br>As mensagens não ficam salvas.' : `Conversa privada com ${esc(c.name)}.<br>Só vocês dois veem.`}</div>`;
   for (const m of c.msgs) {
     const d = el('div', 'msg' + (m.sys ? ' sys' : ''));
+    if (m.id) d.dataset.id = m.id;
     d.innerHTML = m.sys ? esc(m.text)
-      : `<div class="who-row">${avatarHTML(m.from, 18)}<span class="who" style="color:${m.mine ? 'var(--accent-2)' : colorFor(m.from)}">${esc(m.name)}</span><span class="when">${new Date(m.ts).toLocaleTimeString().slice(0, 5)}</span></div><div class="body">${m.img ? `<img class="chat-img" src="${m.img}" data-ts="${m.ts}" alt="imagem" />` : m.imgGone ? '<span class="muted">(imagem antiga, removida da memória)</span>' : linkify(m.text)}</div>`;
+      : `<div class="who-row">${avatarHTML(m.from, 18)}<span class="who" style="color:${m.mine ? 'var(--accent-2)' : colorFor(m.from)}">${esc(m.name)}</span><span class="when">${new Date(m.ts).toLocaleTimeString().slice(0, 5)}</span></div><div class="body">${m.deleted ? '<span class="deleted">mensagem apagada</span>' : m.img ? `<img class="chat-img" src="${m.img}" alt="imagem" />` : m.imgGone ? '<span class="muted">(imagem antiga, removida da memória)</span>' : linkify(m.text)}</div>${m.mine && m.id && !m.deleted ? '<button class="msg-del" title="Apagar para todos">🗑</button>' : ''}`;
     log.append(d);
   }
   if (atBottom || (c.msgs.length && c.msgs[c.msgs.length - 1].mine)) log.scrollTop = log.scrollHeight;
@@ -997,7 +1000,7 @@ function sendImg() {
       T.send(t, { type: 'chatimg', scope: p.to === 'room' ? 'room' : 'dm', id, n, i, part: p.data.slice(i * IMG_PART, (i + 1) * IMG_PART), name: settings.name });
     }
   }
-  pushImg(p.to, { from: state.selfId, name: settings.name, text: '', img: p.data, ts: Date.now(), mine: true });
+  pushImg(p.to, { id, from: state.selfId, name: settings.name, text: '', img: p.data, ts: Date.now(), mine: true });
   renderChat();
 }
 
@@ -1029,7 +1032,7 @@ function onChatImgPart(m) {
   if (!IMG_RE.test(data)) return;
   const name = state.members.some((y) => y.id === m.from) ? memberName(m.from) : String(x.name || 'alguém').slice(0, 32);
   const chatKey = x.scope === 'dm' ? m.from : 'room';
-  pushImg(chatKey, { from: m.from, name, text: '', img: data, ts: Date.now(), dmName: name });
+  pushImg(chatKey, { id: m.id, from: m.from, name, text: '', img: data, ts: Date.now(), dmName: name });
   if (chatKey !== 'room') T.attention();
   renderChat(); renderMembers();
 }
@@ -1047,6 +1050,31 @@ function saveImgView() {
   a.href = imgViewing.img;
   a.download = `telinha-${new Date(imgViewing.ts).toISOString().slice(0, 19).replace(/[T:]/g, '-')}.${ext}`;
   a.click();
+}
+
+// ----- apagar para todos: some de quem ainda tem a mensagem (só existe na memória de quem está com o app aberto)
+function markDeleted(msg) {
+  msg.deleted = true; msg.text = ''; msg.img = null;
+  if (imgViewing === msg) $('#imgViewModal').classList.add('hidden');
+  renderChat.sig = null;
+}
+function deleteMsg(key, msg) {
+  if (!msg.mine || !msg.id || msg.deleted) return;
+  if (!confirm('Apagar esta mensagem para todos?')) return;
+  const targets = key === 'room' ? state.members.filter((x) => x.id !== state.selfId).map((x) => x.id) : [key];
+  for (const t of targets) T.send(t, { type: 'chatdel', scope: key === 'room' ? 'room' : 'dm', id: msg.id });
+  markDeleted(msg);
+  renderChat();
+}
+function onChatDel(m) {
+  if (typeof m.id !== 'string' || !m.id) return;
+  for (const k of imgIn.keys()) if (k === `${m.from}|${m.id}`) imgIn.delete(k); // imagem ainda chegando
+  const c = chats.get(m.scope === 'dm' ? m.from : 'room');
+  const msg = c && c.msgs.find((x) => x.id === m.id && x.from === m.from); // só quem enviou pode apagar
+  if (!msg || msg.deleted) return;
+  markDeleted(msg);
+  if (c.unread > 0 && !(chatOpen && activeChat === (m.scope === 'dm' ? m.from : 'room'))) c.unread--;
+  renderChat(); renderMembers();
 }
 
 // ---------------------------------------------------------------- pedidos de transmissão
@@ -1217,9 +1245,11 @@ $('#btnImgSend').onclick = sendImg;
 $('#btnImgSave').onclick = saveImgView;
 $('#imgViewModal').onclick = (e) => { if (e.target.id === 'imgViewModal') $('#imgViewModal').classList.add('hidden'); };
 $('#chatLog').addEventListener('click', (e) => {
-  const img = e.target.closest('.chat-img'); if (!img) return;
-  const msg = chatFor(activeChat).msgs.find((x) => String(x.ts) === img.dataset.ts && x.img);
-  if (msg) openImgView(msg);
+  const box = e.target.closest('.msg'); if (!box || !box.dataset.id) return;
+  const msg = chatFor(activeChat).msgs.find((x) => x.id === box.dataset.id);
+  if (!msg) return;
+  if (e.target.closest('.msg-del')) deleteMsg(activeChat, msg);
+  else if (e.target.closest('.chat-img') && msg.img) openImgView(msg);
 });
 // arrastar imagem para o chat; soltar arquivo fora do chat não faz nada
 ['dragover', 'drop'].forEach((ev) => document.addEventListener(ev, (e) => e.preventDefault()));
