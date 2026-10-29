@@ -116,16 +116,16 @@ h3 { margin: 0; font-size: 16px; }
 .tile-body video { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
 .tile-body:fullscreen video { object-fit: contain; }
 .tile-body:focus { outline: none; }
-/* tela cheia: barrinha no canto inferior direito; some com o ponteiro quando o mouse para */
+/* tela cheia: faixa embaixo com a borda escurecida; some com o ponteiro quando o mouse para */
 .fs-bar { display: none; }
 .tile-body:fullscreen .fs-bar {
-  display: flex; align-items: center; gap: 10px; position: absolute; right: 20px; bottom: 20px;
-  padding: 8px 12px; border-radius: 10px; background: rgba(15, 17, 21, .72); backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, .08); font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .25s;
+  display: flex; align-items: center; gap: 10px; position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 60px 28px 22px; background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, .45) 40%, rgba(0, 0, 0, .8));
+  font-size: 14px; opacity: 0; pointer-events: none; transition: opacity .25s;
 }
 .tile-body:fullscreen.awake .fs-bar { opacity: 1; pointer-events: auto; }
 .tile-body:fullscreen:not(.awake), .tile-body:fullscreen:not(.awake) video { cursor: none; }
-.fs-bar .fs-name { font-weight: 600; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fs-bar .fs-name { margin-right: auto; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); font-weight: 600; max-width: 40%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fs-bar input[type=range] { width: 130px; accent-color: var(--accent); }
 .fs-bar .vol-pct { color: #c9ced8; }
 .overlay { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; text-align: center; padding: 20px; }
