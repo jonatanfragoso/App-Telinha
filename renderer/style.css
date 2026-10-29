@@ -109,10 +109,25 @@ h3 { margin: 0; font-size: 16px; }
 .tile { background: #000; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
 .tile-head { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--panel); font-size: 13px; }
 .tile-head .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
-.tile-head input[type=range] { width: 90px; accent-color: var(--accent); }
+.tile-head input[type=range] { width: 110px; accent-color: var(--accent); }
+.tile .mute { font-size: 15px; padding: 2px 6px; }
+.tile .vol-pct { font-size: 12px; color: var(--muted); min-width: 34px; font-variant-numeric: tabular-nums; }
 .tile-body { position: relative; aspect-ratio: 16/9; background: #000; }
 .tile-body video { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
 .tile-body:fullscreen video { object-fit: contain; }
+.tile-body:focus { outline: none; }
+/* tela cheia: barrinha no canto inferior direito; some com o ponteiro quando o mouse para */
+.fs-bar { display: none; }
+.tile-body:fullscreen .fs-bar {
+  display: flex; align-items: center; gap: 10px; position: absolute; right: 20px; bottom: 20px;
+  padding: 8px 12px; border-radius: 10px; background: rgba(15, 17, 21, .72); backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, .08); font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .25s;
+}
+.tile-body:fullscreen.awake .fs-bar { opacity: 1; pointer-events: auto; }
+.tile-body:fullscreen:not(.awake), .tile-body:fullscreen:not(.awake) video { cursor: none; }
+.fs-bar .fs-name { font-weight: 600; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fs-bar input[type=range] { width: 130px; accent-color: var(--accent); }
+.fs-bar .vol-pct { color: #c9ced8; }
 .overlay { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-size: 13px; text-align: center; padding: 20px; }
 .stats {
   position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,.65); padding: 6px 9px; border-radius: 6px;

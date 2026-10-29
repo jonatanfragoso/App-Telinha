@@ -362,7 +362,9 @@ function openTile(streamerId) {
     <div class="tile-head">
       ${avatarHTML(streamerId, 22)}
       <span class="t">${esc(memberName(streamerId))}</span>
-      <span title="Volume">🔊</span><input type="range" min="0" max="100" value="100" class="vol" />
+      <button class="btn ghost small mute" title="Mutar / desmutar">🔊</button>
+      <input type="range" min="0" max="100" step="1" value="100" class="vol" title="Volume (roda do mouse também ajusta)" />
+      <span class="vol-pct">100%</span>
       <button class="btn ghost small" data-a="stats" title="Estatísticas">ⓘ</button>
       <button class="btn ghost small" data-a="full" title="Tela cheia (ou clique duplo)">⛶</button>
       <button class="btn ghost small" data-a="close" title="Parar de assistir">✕</button>
@@ -371,14 +373,61 @@ function openTile(streamerId) {
       <video autoplay playsinline></video>
       <div class="stats hidden"></div>
       <div class="overlay"></div>
+      <div class="fs-bar">
+        <span class="fs-name"></span>
+        <button class="btn ghost small mute" title="Mutar / desmutar (M)">🔊</button>
+        <input type="range" min="0" max="100" step="1" value="100" class="vol" title="Volume (roda do mouse também ajusta)" />
+        <span class="vol-pct">100%</span>
+        <button class="btn small" data-a="exitfs" title="Sair da tela cheia (Esc ou clique duplo)">✕ Sair da tela cheia</button>
+      </div>
     </div>`;
   const video = tile.querySelector('video');
   const body = tile.querySelector('.tile-body');
-  tile.querySelector('.vol').oninput = (e) => { video.volume = e.target.value / 100; };
+
+  // volume: os controles do topo e os da tela cheia ficam iguais
+  let vol = 100;
+  const syncVol = () => {
+    video.volume = vol / 100;
+    const off = video.muted || vol === 0;
+    tile.querySelectorAll('.vol').forEach((r) => { r.value = vol; });
+    tile.querySelectorAll('.vol-pct').forEach((x) => { x.textContent = video.muted ? 'mudo' : `${vol}%`; });
+    tile.querySelectorAll('.mute').forEach((b) => { b.textContent = off ? '🔇' : vol < 50 ? '🔉' : '🔊'; });
+  };
+  const setVol = (v) => { vol = Math.max(0, Math.min(100, Math.round(v))); if (vol > 0) video.muted = false; syncVol(); };
+  const toggleMute = () => {
+    if (video.muted || vol === 0) { video.muted = false; if (vol === 0) vol = 50; } else video.muted = true;
+    syncVol();
+  };
+  tile.querySelectorAll('.vol').forEach((r) => {
+    r.oninput = () => setVol(+r.value);
+    r.addEventListener('wheel', (e) => { e.preventDefault(); setVol(vol + (e.deltaY < 0 ? 5 : -5)); }, { passive: false });
+  });
+  tile.querySelectorAll('.mute').forEach((b) => { b.onclick = toggleMute; });
+
+  // tela cheia: controles no canto que somem (com o ponteiro) quando o mouse para
+  const full = () => (document.fullscreenElement === body ? document.exitFullscreen() : body.requestFullscreen());
+  let idleTimer = null;
+  const wake = () => {
+    body.classList.add('awake');
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => { if (!body.querySelector('.fs-bar:hover')) body.classList.remove('awake'); else wake(); }, 2500);
+  };
+  body.addEventListener('mousemove', wake);
+  body.addEventListener('fullscreenchange', () => {
+    body.querySelector('.fs-name').textContent = memberName(streamerId);
+    if (document.fullscreenElement === body) wake(); else { clearTimeout(idleTimer); body.classList.remove('awake'); }
+  });
+  body.addEventListener('wheel', (e) => {
+    if (document.fullscreenElement !== body || e.target.closest('.vol')) return;
+    e.preventDefault(); setVol(vol + (e.deltaY < 0 ? 5 : -5)); wake();
+  }, { passive: false });
+  body.addEventListener('keydown', (e) => { if (e.key === 'm' || e.key === 'M') { toggleMute(); wake(); } });
+  body.tabIndex = -1;
+  tile.querySelector('[data-a=exitfs]').onclick = () => document.exitFullscreen();
   tile.querySelector('[data-a=close]').onclick = () => stopWatching(streamerId);
-  tile.querySelector('[data-a=full]').onclick = () => body.requestFullscreen();
+  tile.querySelector('[data-a=full]').onclick = () => { full(); body.focus(); };
   tile.querySelector('[data-a=stats]').onclick = () => tile.querySelector('.stats').classList.toggle('hidden');
-  body.ondblclick = () => (document.fullscreenElement ? document.exitFullscreen() : body.requestFullscreen());
+  body.ondblclick = (e) => { if (!e.target.closest('.fs-bar')) { full(); body.focus(); } };
   $('#watchArea').append(tile);
   const w = { pc: null, tile, video, pendingIce: [], statsTimer: null };
   inPcs.set(streamerId, w);
