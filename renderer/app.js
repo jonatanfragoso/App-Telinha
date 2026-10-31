@@ -365,6 +365,7 @@ function openTile(streamerId) {
       <button class="btn ghost small mute" title="Mutar / desmutar">🔊</button>
       <input type="range" min="0" max="100" step="1" value="100" class="vol" title="Volume (roda do mouse também ajusta)" />
       <span class="vol-pct">100%</span>
+      <button class="btn ghost small stretch-btn" aria-pressed="false" title="Esticar a imagem para preencher (como quem joga em 4:3 esticado vê)">⇔ Esticar</button>
       <button class="btn ghost small" data-a="stats" title="Estatísticas">ⓘ</button>
       <button class="btn ghost small" data-a="full" title="Tela cheia (ou clique duplo)">⛶</button>
       <button class="btn ghost small" data-a="close" title="Parar de assistir">✕</button>
@@ -378,6 +379,7 @@ function openTile(streamerId) {
         <button class="btn ghost small mute" title="Mutar / desmutar (M)">🔊</button>
         <input type="range" min="0" max="100" step="1" value="100" class="vol" title="Volume (roda do mouse também ajusta)" />
         <span class="vol-pct">100%</span>
+        <button class="btn ghost small stretch-btn" aria-pressed="false" title="Esticar a imagem para preencher (como quem joga em 4:3 esticado vê)">⇔ Esticar</button>
         <button class="btn small" data-a="exitfs" title="Sair da tela cheia (Esc ou clique duplo)">✕ Sair da tela cheia</button>
       </div>
     </div>`;
@@ -404,6 +406,18 @@ function openTile(streamerId) {
   });
   tile.querySelectorAll('.mute').forEach((b) => { b.onclick = toggleMute; });
 
+  // esticar: segue a escolha de quem transmite, até a pessoa clicar no botão
+  let stretchMine = null;
+  const syncStretch = () => {
+    const m = state.members.find((x) => x.id === streamerId);
+    const on = stretchMine !== null ? stretchMine : !!(m && m.streaming && m.streaming.stretch);
+    body.classList.toggle('stretch', on);
+    tile.querySelectorAll('.stretch-btn').forEach((b) => b.setAttribute('aria-pressed', String(on)));
+  };
+  tile.querySelectorAll('.stretch-btn').forEach((b) => {
+    b.onclick = () => { stretchMine = !body.classList.contains('stretch'); syncStretch(); };
+  });
+
   // tela cheia: controles no canto que somem (com o ponteiro) quando o mouse para
   const full = () => (document.fullscreenElement === body ? document.exitFullscreen() : body.requestFullscreen());
   let idleTimer = null;
@@ -429,8 +443,9 @@ function openTile(streamerId) {
   tile.querySelector('[data-a=stats]').onclick = () => tile.querySelector('.stats').classList.toggle('hidden');
   body.ondblclick = (e) => { if (!e.target.closest('.fs-bar')) { full(); body.focus(); } };
   $('#watchArea').append(tile);
-  const w = { pc: null, tile, video, pendingIce: [], statsTimer: null };
+  const w = { pc: null, tile, video, pendingIce: [], statsTimer: null, syncStretch };
   inPcs.set(streamerId, w);
+  syncStretch();
   renderLive();
   return w;
 }
@@ -499,12 +514,14 @@ function loadQuality() {
   $('#qPreset').value = q.preset || '';
   $('#qRes').value = q.res; $('#qFps').value = String(q.fps); $('#qBitrate').value = String(q.bitrate);
   $('#qCodec').value = q.codec; $('#qPref').value = q.pref;
+  $('#qStretch').checked = !!q.stretch;
 }
 function saveQuality() {
   try {
     localStorage.setItem(QKEY, JSON.stringify({
       preset: $('#qPreset').value, res: $('#qRes').value, fps: Number($('#qFps').value),
       bitrate: Number($('#qBitrate').value), codec: $('#qCodec').value, pref: $('#qPref').value,
+      stretch: $('#qStretch').checked,
     }));
   } catch {}
 }
@@ -709,14 +726,15 @@ async function goLive() {
   }
 
   const s = vt.getSettings();
-  my = { stream, title: pickSel.name, cfg, audioInfo, audioMode: mode, size: { w: s.width || w, h: s.height || h } };
+  my = { stream, title: pickSel.name, cfg, audioInfo, audioMode: mode, size: { w: s.width || w, h: s.height || h }, stretch: $('#qStretch').checked };
   $('#pickModal').classList.add('hidden');
   saveQuality();
   $('#liveRes').value = $('#qRes').value;
   $('#liveFps').value = String(cfg.fps);
   $('#liveBitrate').value = String(cfg.bitrate);
   $('#livePref').value = cfg.pref;
-  T.setSelf({ streaming: { title: my.title, w: my.size.w, h: my.size.h, fps: cfg.fps } });
+  $('#liveStretch').checked = my.stretch;
+  publishStreaming();
   renderMyLive();
   renderLive();
 }
@@ -800,7 +818,7 @@ async function liveTune() {
   my.cfg.pref = $('#livePref').value;
   vt.contentHint = my.cfg.pref === 'maintain-resolution' ? 'detail' : 'motion';
   for (const [, o] of outPcs) await applyEncoding(o.pc, my.cfg);
-  T.setSelf({ streaming: { title: my.title, w: my.size.w, h: my.size.h, fps: my.cfg.fps } });
+  publishStreaming();
   renderMyLive();
   toast('Qualidade atualizada');
 }
@@ -814,7 +832,7 @@ function cleanMember(m) {
     id: str(m.id, 64), name: str(m.name, 32) || '?', ip: str(m.ip, 64),
     isHost: !!m.isHost, direct: typeof m.direct === 'boolean' ? m.direct : null,
     streaming: m.streaming && typeof m.streaming === 'object'
-      ? { title: str(m.streaming.title, 200), w: num(m.streaming.w), h: num(m.streaming.h), fps: num(m.streaming.fps) } : null,
+      ? { title: str(m.streaming.title, 200), w: num(m.streaming.w), h: num(m.streaming.h), fps: num(m.streaming.fps), stretch: m.streaming.stretch === true } : null,
     playing: m.playing && typeof m.playing === 'object' && str(m.playing.name, 60)
       ? { name: str(m.playing.name, 60), requests: !!m.playing.requests } : null,
     avatar: cleanAvatarRef(m.avatar),
@@ -834,6 +852,7 @@ T.onState((s) => {
   for (const [id, w] of inPcs) {
     const t = w.tile.querySelector('.t');
     if (t && !prevIds.has(id)) t.textContent = `${memberName(id)}${w.title ? ' — ' + w.title : ''}`;
+    w.syncStretch();
   }
 });
 T.onLog(log);
@@ -1484,6 +1503,17 @@ $('#qPreset').onchange = applyPreset;
 ['#qRes', '#qFps', '#qBitrate'].forEach((s) => ($(s).onchange = onManualQuality));
 ['#qCodec', '#qPref'].forEach((s) => ($(s).onchange = saveQuality));
 ['#liveRes', '#liveFps', '#liveBitrate', '#livePref'].forEach((s) => ($(s).onchange = liveTune));
+$('#qStretch').onchange = saveQuality;
+// esticado: muda ao vivo só a forma de exibir para quem assiste (o vídeo é o mesmo)
+$('#liveStretch').onchange = () => {
+  if (!my) return;
+  my.stretch = $('#liveStretch').checked;
+  $('#qStretch').checked = my.stretch; saveQuality();
+  publishStreaming();
+};
+function publishStreaming() {
+  T.setSelf({ streaming: { title: my.title, w: my.size.w, h: my.size.h, fps: my.cfg.fps, stretch: !!my.stretch } });
+}
 // Esc fecha só a janela de cima (ex.: o recorte da foto, sem fechar as configurações)
 window.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return;
